@@ -1,0 +1,9 @@
+{
+  "name": "Quantum Vocal Synthesizer Plugin",
+  "version": "2.1.0",
+  "noiseSuppressionDb": -18,
+  "accentCompensation": "Hinglish / Indian English Focus",
+  "vocalHarmonicsShift": 1.04,
+  "dynamicPitchAdaptation": true,
+  "autoHindiVoiceSelection": true
+}

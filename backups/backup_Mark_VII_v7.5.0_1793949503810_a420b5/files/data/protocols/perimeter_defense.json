@@ -1,0 +1,11 @@
+{
+  "name": "Perimeter Defense Protocol",
+  "version": "1.2.0",
+  "status": "ACTIVE",
+  "threatThreshold": "ELEVATED",
+  "ironLegionPlatforms": 8,
+  "shieldsPowerPercent": 98.5,
+  "sensorSweepFrequencyHz": 4.2,
+  "autoInterception": true,
+  "alertRadiusMeters": 1500
+}

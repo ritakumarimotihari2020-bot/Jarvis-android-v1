@@ -113,11 +113,11 @@ export const ChatConsole: React.FC<ChatConsoleProps> = ({
 
   const quickPrompts = [
     { label: 'नमस्ते जार्विस', prompt: 'नमस्ते जार्विस, आपकी स्थिति क्या है?' },
+    { label: 'Full Device Control', prompt: 'Jarvis, open full autonomous device control center and calibrate hardware.' },
+    { label: 'Modify App Files', prompt: 'Jarvis, open app source files editor so I can modify application code.' },
     { label: 'System Self-Upgrade', prompt: 'Jarvis, execute self-analysis and report available upgrade patches.' },
     { label: 'System Diagnostic', prompt: 'Jarvis, execute full system diagnostics and check arc reactor status.' },
-    { label: 'Protocol House Party', prompt: 'Initiate Protocol House Party, Jarvis.' },
     { label: 'मौसम बताओ', prompt: 'जार्विस, वर्तमान वायुमंडलीय स्थिति और मौसम का विश्लेषण बताएं।' },
-    { label: 'Python Script', prompt: 'Write a high-performance Python script to analyze real-time streaming data.' },
   ];
 
   return (
@@ -347,38 +347,62 @@ export const ChatConsole: React.FC<ChatConsoleProps> = ({
           })
         )}
 
-        {/* Real-time Voice Recognition Banner */}
+        {/* Real-time Voice Recognition & Neural Transceiver Banner */}
         {isListening && (
-          <div className="p-3 rounded-xl bg-cyan-950/50 border border-cyan-400/60 text-cyan-200 animate-pulse flex items-start justify-between gap-2.5">
-            <div className="flex items-start gap-2.5 flex-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping mt-1" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-orbitron font-bold text-cyan-300 tracking-wider">
-                    VOICE INPUT ACTIVE ({languageMode === 'hi' ? 'HINDI / हिंदी' : 'ENGLISH'})
-                  </span>
-                  <span className="text-[9px] font-tech text-cyan-400/70 border border-cyan-500/30 px-1 rounded">
-                    Speak now
-                  </span>
+          <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-400/70 text-cyan-200 space-y-2.5 animate-fadeIn">
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-start gap-2.5 flex-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping mt-1" />
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-orbitron font-bold text-cyan-300 tracking-wider">
+                      NEURAL VOICE TRANSCEIVER ACTIVE ({languageMode === 'hi' ? 'HINDI / हिंदी' : 'ENGLISH'})
+                    </span>
+                    <span className="text-[9px] font-tech text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-1.5 py-0.5 rounded">
+                      ZERO-BLOCK VOICE LINK
+                    </span>
+                  </div>
+                  <p className="font-tech text-xs text-cyan-100 mt-1 italic select-text">
+                    {interimTranscript || 'Speak now, or tap a live voice command below...'}
+                  </p>
                 </div>
-                <p className="font-tech text-xs text-cyan-100 mt-1 italic select-text">
-                  {interimTranscript || 'Listening for your voice...'}
-                </p>
               </div>
+
+              {interimTranscript && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleMic();
+                    onSendMessage(interimTranscript);
+                  }}
+                  className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-orbitron font-bold text-[10px] rounded tracking-wider shrink-0 transition-all shadow"
+                >
+                  SEND NOW
+                </button>
+              )}
             </div>
 
-            {interimTranscript && (
-              <button
-                type="button"
-                onClick={() => {
-                  onToggleMic();
-                  onSendMessage(interimTranscript);
-                }}
-                className="px-2 py-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-orbitron font-bold text-[10px] rounded tracking-wider shrink-0 transition-all shadow"
-              >
-                SEND NOW
-              </button>
-            )}
+            {/* Instant Voice Command Transceiver Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-cyan-500/20">
+              {[
+                { label: '🎙️ नमस्ते जार्विस', cmd: 'नमस्ते जार्विस, सभी सिस्टम की स्थिति बताओ' },
+                { label: '🎙️ डिवाइस कंट्रोल खोलो', cmd: 'Jarvis, open full autonomous device control center' },
+                { label: '🎙️ ऐप फ़ाइल बदलो', cmd: 'Jarvis, open app source files editor to modify code' },
+                { label: '🎙️ सेल्फ अपग्रेड', cmd: 'Jarvis, prepare autonomous self-upgrade system' },
+              ].map((vc) => (
+                <button
+                  key={vc.label}
+                  type="button"
+                  onClick={() => {
+                    onToggleMic();
+                    onSendMessage(vc.cmd);
+                  }}
+                  className="px-2 py-0.5 rounded-full bg-slate-950/90 border border-cyan-400/40 hover:border-cyan-300 text-[10px] font-rajdhani text-cyan-200 transition-all"
+                >
+                  {vc.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

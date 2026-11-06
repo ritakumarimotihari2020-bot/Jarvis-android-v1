@@ -1,0 +1,9 @@
+{
+  "systemName": "J.A.R.V.I.S. Mark VII",
+  "arcReactorTuningGigaWatts": 3.8,
+  "neuralBufferCapacityMb": 2048,
+  "coolingEfficiencyPercent": 99.4,
+  "fallbackHeuristicsActive": true,
+  "allowAutonomousModifications": true,
+  "maxBackupsRetained": 10
+}

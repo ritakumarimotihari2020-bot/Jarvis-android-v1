@@ -33,7 +33,7 @@ export function getAudioContext(): AudioContext | null {
  * (tap, click, keydown) to bypass mobile and browser autoplay policies.
  */
 export function unlockAudio() {
-  if (isAudioUnlocked || typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
   try {
     const ctx = getAudioContext();
@@ -45,9 +45,16 @@ export function unlockAudio() {
       isAudioUnlocked = true;
     }
 
-    // Unlock SpeechSynthesis on iOS / Android Chrome
+    // Unlock SpeechSynthesis on iOS / Android / Chrome for async TTS calls
     if ('speechSynthesis' in window) {
       window.speechSynthesis.resume();
+      if (!isAudioUnlocked) {
+        const silentUtterance = new SpeechSynthesisUtterance(' ');
+        silentUtterance.volume = 0;
+        silentUtterance.rate = 2;
+        window.speechSynthesis.speak(silentUtterance);
+        isAudioUnlocked = true;
+      }
     }
   } catch (e) {
     // ignore
@@ -244,4 +251,12 @@ export function playAlert() {
   } catch (e) {
     // ignore
   }
+}
+
+export function playSuccess() {
+  playResponseChime();
+}
+
+export function playError() {
+  playAlert();
 }

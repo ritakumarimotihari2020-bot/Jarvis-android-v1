@@ -58,6 +58,16 @@ export function generateJarvisLocalResponse(
       return { text, speechText: 'सर, मैंने डिज़ाइन स्टूडियो तैयार कर दिया है। आपकी अनुमति के बिना कोई भी डिज़ाइन लागू नहीं होगा।', isHindi: true };
     }
 
+    if (query.includes('डिवाइस') || query.includes('कंट्रोल') || query.includes('बैटरी') || query.includes('कैमरा') || query.includes('device') || query.includes('control')) {
+      const text = `सर, ऑटोनॉमस डिवाइस एवं हार्डवेयर कंट्रोल सेंटर (Device Control Center) सक्रिय कर दिया गया है।\n\n• **ऑटोपायलट मोड**: बैटरी, स्क्रीन वेक-लॉक, ऑप्टिकल ब्राइटनेस, और CPU/RAM मेमोरी ऑप्टिमाइजेशन मेरे नियंत्रण में हैं।\n• **हार्डवेयर मॉड्यूल्स**: फुलस्क्रीन HUD, ऑप्टिकल कैमरा वाइज़र, हैप्टिक वाइब्रेशन, और GPS टेलीमेट्री उपलब्ध हैं।\n\nआप किसी भी समय मैनुअल या ऑटोनॉमस नियंत्रण बदल सकते हैं सर।`;
+      return { text, speechText: 'सर, पूरे डिवाइस का ऑटोनॉमस कंट्रोल सेंटर सक्रिय है। सभी हार्डवेयर प्रणालियां तैयार हैं।', isHindi: true };
+    }
+
+    if (query.includes('फ़ाइल') || query.includes('फाइल') || query.includes('बदलाव') || query.includes('file') || query.includes('change') || query.includes('edit')) {
+      const text = `सर, ऐप सोर्स फ़ाइल एडिटर (Autonomous App File Modifier) तैयार है।\n\n• मैं इस ऐप की सभी फ्रंटएंड (\`src/**/*\`), बैकएंड (\`server.ts\`), और कॉन्फ़िगरेशन फ़ाइलों में बदलाव करने और खुद को अपग्रेड करने के लिए सदैव तैयार हूँ।\n• हर बदलाव से पहले ऑटोमैटिक SHA-256 वेरिफाइड बैकअप बनाया जाता है और आपकी अनुमति के बाद ही कोड लागू होता है।`;
+      return { text, speechText: 'सर, मैं ऐप की किसी भी फ़ाइल में सुरक्षित बदलाव और अपग्रेड करने के लिए तैयार हूँ।', isHindi: true };
+    }
+
     // Default polite Hindi response
     const text = `जी सर, आपका निर्देश स्वीकार किया गया। मेरी स्थानीय तंत्रिका प्रणाली आपके इस विषय पर पूर्ण विचार कर रही है। कृपया इस पर और अधिक विवरण प्रदान करें, ताकि मैं सर्वोत्तम समाधान प्रस्तुत कर सकूँ।\n\n*(नोट: क्लाउड उपग्रह दैनिक निःशुल्क सीमा पर है; स्थानीय जार्विस कोर सक्रिय है।)*`;
     const speechText = 'जी सर, आपका निर्देश स्वीकार किया गया। स्थानीय जार्विस कोर सक्रिय है।';
@@ -73,6 +83,24 @@ export function generateJarvisLocalResponse(
   if (query.includes('who are you') || query.includes('your name') || query.includes('who made you') || query.includes('creator')) {
     const text = `I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. Engineered by Mr. Tony Stark to manage Stark Industries facilities, Iron Legion armor protocols, and serve as your dedicated personal AI concierge.`;
     return { text, speechText: 'I am J.A.R.V.I.S., engineered by Tony Stark as your personal AI assistant. At your service, sir.', isHindi: false };
+  }
+
+  if (query.includes('device') || query.includes('hardware') || query.includes('battery') || query.includes('camera') || query.includes('wake lock') || query.includes('control')) {
+    const text = `Autonomous Device & Hardware Control Center is online, sir.\n\n• **Full Device Autopilot**: Actively managing power profiles, screen wake lock, optical brightness filter, and host CPU/RAM memory purge.\n• **Hardware Subsystems**: Fullscreen HUD lock, Optical Camera Visor, Haptic Vibration array, and GPS Geospatial lock are ready at your command.`;
+    return {
+      text,
+      speechText: 'Autonomous Device Control Center engaged, sir. Full hardware telemetry and autopilot controls are online.',
+      isHindi: false,
+    };
+  }
+
+  if (query.includes('file') || query.includes('source code') || query.includes('modify') || query.includes('edit')) {
+    const text = `Autonomous App File Modifier is standing by, sir.\n\n• **Full Project Access**: I can inspect, propose upgrades, or directly edit any application file across \`src/**/*\`, \`server.ts\`, \`package.json\`, and \`data/**/*\`.\n• **Zero-Risk Upgrade Protocol**: Every file modification automatically creates a SHA-256 verified full-application backup first, runs TypeScript compiler checks (\`tsc --noEmit\`), and requires your explicit approval.`;
+    return {
+      text,
+      speechText: 'Autonomous File Modifier is ready, sir. I can safely inspect, backup, and upgrade any file in my codebase.',
+      isHindi: false,
+    };
   }
 
   if (query.includes('upgrade') || query.includes('patch') || query.includes('self-upgrade') || query.includes('self upgrade') || query.includes('update')) {

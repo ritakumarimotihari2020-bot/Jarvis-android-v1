@@ -1,0 +1,67 @@
+{
+  "currentVersion": "Mark VII v7.5.0",
+  "appliedUpgradeIds": [],
+  "upgradeHistory": [
+    {
+      "id": "rollback-1793944521331",
+      "patchId": "backup_Mark_VII_v7.5.0_1793944520049_50a7c1",
+      "title": "Restored Snapshot (Mark VII v7.5.0)",
+      "previousVersion": "Prior State",
+      "newVersion": "Mark VII v7.5.0",
+      "backupId": "backup_Mark_VII_v7.5.0_1793944520049_50a7c1",
+      "backupVerified": true,
+      "testsPassed": true,
+      "status": "MANUALLY_ROLLED_BACK",
+      "filesModified": [
+        "package.json",
+        "tsconfig.json",
+        "vite.config.ts",
+        "metadata.json",
+        "index.html",
+        "server.ts",
+        "src/App.tsx",
+        "src/components/AutonomousDesignStudio.tsx",
+        "src/components/ChatConsole.tsx",
+        "src/components/FileModifierPanel.tsx",
+        "src/components/HudHeader.tsx",
+        "src/components/JarvisCore.tsx",
+        "src/components/SettingsModal.tsx",
+        "src/components/TelemetryPanel.tsx",
+        "src/components/UpgradeCenter.tsx",
+        "src/index.css",
+        "src/main.tsx",
+        "src/utils/autonomousModules.ts",
+        "src/utils/jarvisHeuristics.ts",
+        "src/utils/soundEffects.ts",
+        "src/utils/speech.ts",
+        "src/utils/themeSystem.ts",
+        "src/utils/upgradeSystem.ts",
+        "data/config/system_tuning.json",
+        "data/config/upgrade_state.json",
+        "data/plugins/quantum_voice_tuning.json",
+        "data/protocols/night_sentry.json",
+        "data/protocols/perimeter_defense.json"
+      ],
+      "appliedAt": "2026-11-06T05:55:21.331Z",
+      "summary": "Restored 28 project files from verified backup backup_Mark_VII_v7.5.0_1793944520049_50a7c1."
+    },
+    {
+      "id": "upg-1793944521295",
+      "patchId": "patch-quantum-cache-2.4",
+      "title": "Quantum Telemetry Caching & Rapid Response Module",
+      "previousVersion": "Mark VII v7.5.0",
+      "newVersion": "Mark VII v7.5.1",
+      "backupId": "backup_Mark_VII_v7.5.0_1793944520049_50a7c1",
+      "backupVerified": true,
+      "testsPassed": true,
+      "status": "APPLIED_VERIFIED",
+      "filesModified": [
+        "src/utils/autonomousModules.ts",
+        "data/config/upgrade_state.json"
+      ],
+      "appliedAt": "2026-11-06T05:55:21.295Z",
+      "summary": "Verified backup backup_Mark_VII_v7.5.0_1793944520049_50a7c1 (28 files), applied code to src/utils/autonomousModules.ts, and passed TypeScript verification (1238ms)."
+    }
+  ],
+  "customUpgrades": []
+}

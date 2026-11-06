@@ -1,5 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Globe, Settings, Cpu, ShieldCheck, Zap, Sparkles, Palette } from 'lucide-react';
+import {
+  Volume2,
+  VolumeX,
+  Settings,
+  ShieldCheck,
+  Zap,
+  Sparkles,
+  Palette,
+  Smartphone,
+  Tag,
+  BellRing,
+  Mail,
+  KeyRound,
+  Gamepad2,
+  Monitor,
+  FolderOpen,
+} from 'lucide-react';
 
 interface HudHeaderProps {
   isAwake: boolean;
@@ -14,6 +30,19 @@ interface HudHeaderProps {
   onOpenUpgradeCenter?: () => void;
   availableUpgradesCount?: number;
   onOpenDesignStudio?: () => void;
+  onOpenDeviceControl?: () => void;
+  onOpenSecurityDashboard?: () => void;
+  onEmergencyStop?: () => void;
+  currentVersion?: string;
+  lastUpdatedText?: string;
+  updateAvailable?: boolean;
+  availableVersion?: string | null;
+  onOpenAdminUpdatePanel?: () => void;
+  onOpenWorkspaceHub?: () => void;
+  onOpenAccounts?: () => void;
+  onOpenMinecraft?: () => void;
+  onOpenComputerControl?: () => void;
+  onOpenFileModifier?: () => void;
 }
 
 export const HudHeader: React.FC<HudHeaderProps> = ({
@@ -25,10 +54,22 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
   autoSpeak,
   onToggleAutoSpeak,
   onOpenSettings,
-  onTestVoice,
   onOpenUpgradeCenter,
   availableUpgradesCount = 0,
   onOpenDesignStudio,
+  onOpenDeviceControl,
+  onOpenSecurityDashboard,
+  onEmergencyStop,
+  currentVersion = '7.5.0',
+  lastUpdatedText = 'Synchronizing...',
+  updateAvailable = false,
+  availableVersion = null,
+  onOpenAdminUpdatePanel,
+  onOpenWorkspaceHub,
+  onOpenAccounts,
+  onOpenMinecraft,
+  onOpenComputerControl,
+  onOpenFileModifier,
 }) => {
   const [time, setTime] = useState<string>('');
   const [utcTime, setUtcTime] = useState<string>('');
@@ -57,7 +98,7 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
   return (
     <header className="w-full bg-[#030712]/90 border-b border-cyan-500/20 backdrop-blur-md px-4 py-2.5 z-30 sticky top-0">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-        {/* Brand & System Readout */}
+        {/* Brand, Live Version & Exact Last Updated Readout */}
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center w-8 h-8 rounded-full border border-cyan-400/50 bg-cyan-950/40">
             <Zap className={`w-4 h-4 text-cyan-300 ${isAwake ? 'animate-pulse' : 'text-slate-500'}`} />
@@ -65,15 +106,19 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
           </div>
 
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-orbitron font-extrabold text-sm tracking-widest text-cyan-300 text-glow-cyan">
                 J.A.R.V.I.S.
               </span>
-              <span className="text-[10px] font-tech text-cyan-500/80 border border-cyan-500/30 px-1 rounded uppercase">
-                MK VII
-              </span>
-              <span className="text-[10px] font-tech text-slate-400 hidden sm:inline">
-                STARK INDUSTRIES OS
+              <button
+                onClick={onOpenAdminUpdatePanel}
+                className="text-[10px] font-orbitron font-bold text-cyan-200 bg-cyan-950/80 border border-cyan-400/60 px-1.5 py-0.5 rounded hover:bg-cyan-900 transition-colors"
+                title="Click to open Admin Update & Version Management Panel"
+              >
+                v{currentVersion}
+              </button>
+              <span className="text-[10px] font-tech text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-1.5 py-0.5 rounded hidden sm:inline">
+                UPDATED: {lastUpdatedText}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-tech text-cyan-400/70">
@@ -82,15 +127,15 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
                 {isAwake ? 'ONLINE' : 'STANDBY'}
               </span>
               <span>|</span>
-              <span className="hidden md:inline">NEURAL CORE 100%</span>
+              <span className="hidden md:inline">ANDROID & WINDOWS READY</span>
               <span className="hidden md:inline">|</span>
-              <span>SEC: LVL 5</span>
+              <span className="text-emerald-300">OWNER SEC: LVL 5</span>
             </div>
           </div>
         </div>
 
         {/* Center Clock HUD */}
-        <div className="hidden lg:flex flex-col items-center border-x border-cyan-500/20 px-6 py-0.5">
+        <div className="hidden xl:flex flex-col items-center border-x border-cyan-500/20 px-5 py-0.5">
           <span className="font-orbitron text-sm font-semibold tracking-widest text-cyan-200">
             {time || '00:00:00'}
           </span>
@@ -99,8 +144,19 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
           </span>
         </div>
 
-        {/* Controls: Language, Audio, Settings */}
+        {/* Controls: Language, Audio, Version Admin, Device, Security, Upgrade, Emergency Stop */}
         <div className="flex items-center gap-2">
+          {/* Emergency STOP ALL COMMANDS Button */}
+          {onEmergencyStop && (
+            <button
+              onClick={onEmergencyStop}
+              className="px-2.5 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 border border-red-300 text-white text-[10px] font-orbitron font-extrabold tracking-wider transition-all shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+              title="Emergency STOP ALL COMMANDS"
+            >
+              STOP ALL
+            </button>
+          )}
+
           {/* Language Selector */}
           <div className="flex items-center bg-slate-900/90 border border-cyan-500/30 rounded-lg p-0.5 text-xs font-rajdhani">
             <button
@@ -154,7 +210,7 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
           {/* Auto-Speak AI Toggle */}
           <button
             onClick={onToggleAutoSpeak}
-            className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-orbitron transition-all hidden sm:flex items-center gap-1.5 ${
+            className={`px-2 py-1.5 rounded-lg border text-[11px] font-orbitron transition-all hidden md:flex items-center gap-1.5 ${
               autoSpeak
                 ? 'border-cyan-500/40 bg-cyan-950/50 text-cyan-300'
                 : 'border-slate-800 bg-slate-900/70 text-slate-500'
@@ -165,15 +221,111 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
             VOICE {autoSpeak ? 'ON' : 'OFF'}
           </button>
 
-          {/* Quick Voice & Sound Test Button in Header */}
-          {onTestVoice && (
+          {/* Admin Update & Version Management Trigger Button */}
+          {onOpenAdminUpdatePanel && (
             <button
-              onClick={onTestVoice}
-              className="px-2 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-950/40 text-cyan-200 hover:border-cyan-400 hover:bg-cyan-900/40 transition-all hidden md:flex items-center gap-1 text-[11px] font-orbitron"
-              title="Test Voice & Cyber Chime"
+              onClick={onOpenAdminUpdatePanel}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-orbitron font-bold transition-all shadow-sm ${
+                updateAvailable
+                  ? 'border-amber-400 bg-amber-950/70 text-amber-200 animate-pulse shadow-[0_0_15px_rgba(251,191,36,0.4)]'
+                  : 'border-cyan-400/60 bg-cyan-950/50 hover:bg-cyan-900/70 text-cyan-200'
+              }`}
+              title="Open Admin Update & Version Management Panel"
             >
-              <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
-              <span>TEST SOUND</span>
+              {updateAvailable ? (
+                <BellRing className="w-3.5 h-3.5 text-amber-300" />
+              ) : (
+                <Tag className="w-3.5 h-3.5 text-cyan-300" />
+              )}
+              <span>
+                {updateAvailable && availableVersion
+                  ? `UPDATE v${availableVersion}`
+                  : `v${currentVersion}`}
+              </span>
+            </button>
+          )}
+
+          {/* Owner Security Dashboard Button */}
+          {onOpenSecurityDashboard && (
+            <button
+              onClick={onOpenSecurityDashboard}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-400/60 bg-amber-950/50 hover:bg-amber-900/70 text-amber-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Owner Authentication & Security Dashboard (PIN, Biometric, Voice)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden lg:inline">SECURITY</span>
+            </button>
+          )}
+
+          {/* Google Workspace Hub Button */}
+          {onOpenWorkspaceHub && (
+            <button
+              onClick={onOpenWorkspaceHub}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-cyan-400/60 bg-cyan-950/60 hover:bg-cyan-900/70 text-cyan-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Open Google Workspace Hub (Gmail, Calendar, Drive, Contacts)"
+            >
+              <Mail className="w-3.5 h-3.5 text-cyan-300" />
+              <span className="hidden xl:inline">WORKSPACE</span>
+            </button>
+          )}
+
+          {/* Personal Accounts Vault Button */}
+          {onOpenAccounts && (
+            <button
+              onClick={onOpenAccounts}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-400/60 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Open Personal Accounts Vault & Manager (Google, Minecraft, Microsoft)"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-emerald-300" />
+              <span className="hidden xl:inline">ACCOUNTS</span>
+            </button>
+          )}
+
+          {/* Minecraft AI Gaming & Server Manager Button */}
+          {onOpenMinecraft && (
+            <button
+              onClick={onOpenMinecraft}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-400 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 text-xs font-orbitron font-extrabold transition-all shadow-[0_0_12px_rgba(16,185,129,0.4)] cursor-pointer shrink-0"
+              title="Open Minecraft AI Gaming Assistant & Live Sandbox World (Java, Bedrock, Geyser)"
+            >
+              <Gamepad2 className="w-4 h-4 text-emerald-300" />
+              <span>MINECRAFT GAME</span>
+            </button>
+          )}
+
+          {/* Computer Control & Hardware Button */}
+          {onOpenComputerControl && (
+            <button
+              onClick={onOpenComputerControl}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-cyan-400/60 bg-cyan-950/50 hover:bg-cyan-900/70 text-cyan-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Open Autonomous Computer Control & Hardware Core"
+            >
+              <Monitor className="w-3.5 h-3.5 text-cyan-300" />
+              <span className="hidden lg:inline">COMPUTER</span>
+            </button>
+          )}
+
+          {/* Autonomous Project File Editor Button */}
+          {onOpenFileModifier && (
+            <button
+              onClick={onOpenFileModifier}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-amber-400/60 bg-amber-950/50 hover:bg-amber-900/70 text-amber-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Open Autonomous Source Code & Project File Editor"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden lg:inline">FILES</span>
+            </button>
+          )}
+
+          {/* Autonomous Device Control Button */}
+          {onOpenDeviceControl && (
+            <button
+              onClick={onOpenDeviceControl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-400/60 bg-emerald-950/50 hover:bg-emerald-900/70 text-emerald-200 text-xs font-orbitron font-bold transition-all shadow-sm"
+              title="Open Autonomous Device & Hardware Control Center"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-300" />
+              <span className="hidden sm:inline">DEVICE</span>
             </button>
           )}
 
@@ -185,7 +337,7 @@ export const HudHeader: React.FC<HudHeaderProps> = ({
               title="Open Autonomous Design Studio & Synthesizer"
             >
               <Palette className="w-3.5 h-3.5 text-cyan-300" />
-              <span className="hidden sm:inline">DESIGN STUDIO</span>
+              <span className="hidden xl:inline">DESIGN</span>
             </button>
           )}
 

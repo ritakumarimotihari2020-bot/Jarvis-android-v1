@@ -1,0 +1,10 @@
+{
+  "name": "Night Sentry Autonomous Patrol",
+  "version": "1.0.4",
+  "status": "STANDBY",
+  "patrolAltitudeMeters": 450,
+  "infraredTelemetry": true,
+  "silentMode": true,
+  "batteryReserveMinimum": "35%",
+  "emergencyBeaconFrequencyMhz": 121.5
+}

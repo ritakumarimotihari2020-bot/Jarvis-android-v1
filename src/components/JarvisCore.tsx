@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Sparkles, Power } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Mic, MicOff, Volume2, Sparkles, Power, Send } from 'lucide-react';
 import { JarvisTheme, themeManager } from '../utils/themeSystem';
 
 export type CoreState = 'standby' | 'idle' | 'listening' | 'thinking' | 'speaking';
@@ -14,6 +14,7 @@ interface JarvisCoreProps {
   isSpeaking: boolean;
   languageMode: 'auto' | 'en' | 'hi';
   theme?: JarvisTheme;
+  onSendVoiceCommand?: (text: string) => void;
 }
 
 export const JarvisCore: React.FC<JarvisCoreProps> = ({
@@ -26,8 +27,10 @@ export const JarvisCore: React.FC<JarvisCoreProps> = ({
   isSpeaking,
   languageMode,
   theme,
+  onSendVoiceCommand,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [voiceDraft, setVoiceDraft] = useState<string>('');
   const activeTheme = theme || themeManager.getActiveTheme();
 
   // Canvas particle and wave simulation
@@ -467,13 +470,72 @@ export const JarvisCore: React.FC<JarvisCoreProps> = ({
           {getSubStatus()}
         </p>
 
-        {/* Audio Level Reactive Bar during listening */}
+        {/* Audio Level Reactive Bar & Neural Voice Transceiver during listening */}
         {isAwake && isListening && (
-          <div className="w-48 h-1.5 bg-slate-900/80 rounded-full mt-2.5 overflow-hidden border border-cyan-500/30 flex items-center px-0.5">
-            <div
-              className="h-1 bg-gradient-to-r from-cyan-500 via-sky-400 to-emerald-400 rounded-full transition-all duration-75"
-              style={{ width: `${Math.max(8, audioLevel * 100)}%` }}
-            />
+          <div className="w-full max-w-xs mt-2.5 space-y-2 animate-fadeIn">
+            <div className="w-48 mx-auto h-1.5 bg-slate-900/80 rounded-full overflow-hidden border border-cyan-500/30 flex items-center px-0.5">
+              <div
+                className="h-1 bg-gradient-to-r from-cyan-500 via-sky-400 to-emerald-400 rounded-full transition-all duration-75"
+                style={{ width: `${Math.max(8, audioLevel * 100)}%` }}
+              />
+            </div>
+
+            {onSendVoiceCommand && (
+              <div className="p-2.5 rounded-xl bg-slate-950/90 border border-cyan-400/50 shadow-lg space-y-2">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!voiceDraft.trim()) return;
+                    const cmd = voiceDraft.trim();
+                    setVoiceDraft('');
+                    onToggleMic();
+                    onSendVoiceCommand(cmd);
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <input
+                    type="text"
+                    value={voiceDraft}
+                    onChange={(e) => setVoiceDraft(e.target.value)}
+                    placeholder={
+                      languageMode === 'hi'
+                        ? 'आवाज़ कमांड बोलें या यहाँ लिखें...'
+                        : 'Speak or enter live voice directive...'
+                    }
+                    className="flex-1 bg-slate-900 border border-cyan-500/30 rounded-lg px-2.5 py-1.5 text-xs font-rajdhani text-cyan-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!voiceDraft.trim()}
+                    className="p-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-slate-950 transition-all"
+                    title="Transmit voice command"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  {[
+                    { label: 'नमस्ते जार्विस', cmd: 'नमस्ते जार्विस, सभी सिस्टम की स्थिति बताओ' },
+                    { label: 'Device Control', cmd: 'Jarvis, open full autonomous device control center' },
+                    { label: 'Modify App File', cmd: 'Jarvis, open app source files editor to modify code' },
+                    { label: 'Self-Upgrade', cmd: 'Jarvis, prepare autonomous self-upgrade system' },
+                  ].map((vc) => (
+                    <button
+                      key={vc.label}
+                      type="button"
+                      onClick={() => {
+                        onToggleMic();
+                        onSendVoiceCommand(vc.cmd);
+                      }}
+                      className="px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/30 hover:border-cyan-400 text-[10px] font-rajdhani text-cyan-200 transition-all"
+                    >
+                      🎙️ {vc.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
