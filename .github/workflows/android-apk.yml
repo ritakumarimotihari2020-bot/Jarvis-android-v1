@@ -44,6 +44,99 @@ jobs:
       - name: Sync Android project
         run: npx cap sync android
 
+      - name: Add JARVIS Android permissions and Accessibility Service
+        run: |
+          mkdir -p android/app/src/main/java/com/jarvis/markvii
+          mkdir -p android/app/src/main/res/xml
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/java/com/jarvis/markvii/JarvisAccessibilityService.java <<'EOF'
+          package com.jarvis.markvii;
+
+          import android.accessibilityservice.AccessibilityService;
+          import android.view.accessibility.AccessibilityEvent;
+
+          /**
+           * User-enabled accessibility entry point for JARVIS.
+           * Android requires the device owner to enable this service manually in Settings.
+           */
+          public class JarvisAccessibilityService extends AccessibilityService {
+              private static volatile JarvisAccessibilityService instance;
+
+              public static boolean isEnabled() {
+                  return instance != null;
+              }
+
+              @Override
+              protected void onServiceConnected() {
+                  super.onServiceConnected();
+                  instance = this;
+              }
+
+              @Override
+              public void onAccessibilityEvent(AccessibilityEvent event) {
+                  // No screen contents are collected or transmitted.
+              }
+
+              @Override
+              public void onInterrupt() {
+                  // Nothing to interrupt.
+              }
+
+              @Override
+              public void onDestroy() {
+                  if (instance == this) instance = null;
+                  super.onDestroy();
+              }
+          }
+          EOF
+          cat > android/app/src/main/res/xml/jarvis_accessibility_service.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:description="@string/jarvis_accessibility_description"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:notificationTimeout="100"
+              android:canRetrieveWindowContent="true"
+              android:canRetrieveInteractiveWindows="true"
+              android:canPerformGestures="true"
+              android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows" />
+          EOF
+          cat > android/app/src/main/res/values/jarvis_strings.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="jarvis_accessibility_description">JARVIS uses Accessibility only for user-requested on-device assistance such as navigation and interaction. Enable it only if you trust this app.</string>
+          </resources>
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          permissions = '''
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+          '''
+          if "android.permission.RECORD_AUDIO" not in s:
+              s = s.replace("<application", permissions + "\n    <application", 1)
+          service = '''
+                  <service
+                      android:name="com.jarvis.markvii.JarvisAccessibilityService"
+                      android:label="JARVIS Accessibility"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/jarvis_accessibility_service" />
+                  </service>
+          '''
+          if "JarvisAccessibilityService" not in s:
+              s = s.replace("</application>", service + "\n    </application>", 1)
+          p.write_text(s)
+          PY
+
       - name: Build debug APK
         working-directory: android
         run: |
