@@ -8,6 +8,8 @@ on:
       - 'package.json'
       - 'capacitor.config.json'
       - 'src/**'
+      - 'server.ts'
+      - 'render.yaml'
       - 'index.html'
       - '.github/workflows/android-apk.yml'
 
