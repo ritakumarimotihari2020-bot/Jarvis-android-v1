@@ -52,6 +52,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 
+const API_BASE_URL = (import.meta.env.VITE_JARVIS_API_URL || '').replace(/\\/+$/, '');
 const STORAGE_KEY_MESSAGES = 'jarvis_chat_history_v1';
 const STORAGE_KEY_CONFIG = 'jarvis_config_v1';
 
@@ -423,7 +424,7 @@ export default function App() {
       setIsThinking(true);
 
       try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
