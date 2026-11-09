@@ -284,7 +284,7 @@ app.post('/api/voice/tts', async (req: Request, res: Response) => {
     const ai = getAI();
     const clean = sanitizeForSpeech(text).slice(0, 600);
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash-lite-tts',
+      model: 'gemini-3.1-flash-tts-preview',
       contents: [
         {
           role: 'user',
