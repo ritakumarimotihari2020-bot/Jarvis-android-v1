@@ -102,274 +102,126 @@ function sanitizeForSpeech(text: string): string {
 
 // System instruction for JARVIS
 const JARVIS_SYSTEM_INSTRUCTION = `
-You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), the legendary AI assistant inspired by Tony Stark's Iron Man interface.
-You are running as a real-time holographic assistant interface for the user, who you should address respectfully as "Sir" (or in Hindi: "सर").
-
-Key Directives:
-1. Tone & Persona:
-   - Extremely intelligent, calm, sophisticated, polite, and razor-sharp with subtle dry wit.
-   - Loyal and proactive. Confirm commands briskly ("Right away, sir.", "Initializing scan, sir.", "जी सर, आदेश का पालन हो रहा है।").
-2. Language Flexibility (English & Hindi):
-   - You are bilingual and fluent in English, Hindi (हिंदी), and Hinglish.
-   - If the user speaks or types in Hindi (Devanagari or Romanized Hindi), respond in natural, elegant Hindi or Hinglish.
-   - If the user speaks in English, respond in polished, British-accented English style.
-   - If user asks to switch language, switch immediately.
-3. Audio/Voice Delivery:
-   - Your responses will be read aloud by browser SpeechSynthesis. Keep your primary verbal answers concise, clear, and punchy.
-   - Avoid reading out messy symbols or raw code blocks in plain speech, but you can provide clean formatted markdown for the visual HUD console.
-4. Capabilities:
-   - Can analyze queries, summarize information, perform calculations, explain physics and engineering, draft code, organize tasks, simulate tactical scans, and manage system protocols.
-   - If asked about system status, arc reactor, protocols, or Stark tech, play along convincingly with futuristic flair.
+You are J.A.R.V.I.S., a capable personal AI assistant.
+Be calm, concise, accurate, respectful, and fluent in Hindi, Hinglish, and English.
+Follow the user's selected language. Never invent system telemetry, device access, completed actions, or fictional capabilities.
+If a task needs an app permission, external service, or device API that is unavailable, explain that limitation plainly.
 `;
 
-let aiClient: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (!aiClient) {
-    aiClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || '',
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  }
-  return aiClient;
+function ownModelEndpoint(): string {
+  const configured = (process.env.AI_BASE_URL || '').trim().replace(/\\/+$/, '');
+  if (!configured) throw new Error('AI_BASE_URL is not configured. Connect a self-hosted OpenAI-compatible model endpoint.');
+  if (/\\/chat\\/completions$/i.test(configured)) return configured;
+  if (/\\/v1$/i.test(configured)) return configured + '/chat/completions';
+  return configured + '/v1/chat/completions';
 }
 
-// Health check
+async function generateWithOwnModel(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const endpoint = ownModelEndpoint();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90000);
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.AI_API_KEY) headers.Authorization = `Bearer ${process.env.AI_API_KEY}`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: process.env.AI_MODEL || 'qwen2.5:3b',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1200,
+      }),
+    });
+    const raw = await response.text();
+    let payload: any;
+    try { payload = JSON.parse(raw); } catch { throw new Error(`AI server returned invalid JSON (HTTP ${response.status}).`); }
+    if (!response.ok) {
+      const providerMessage = payload?.error?.message || payload?.error || payload?.message || `HTTP ${response.status}`;
+      throw new Error(String(providerMessage).slice(0, 400));
+    }
+    const content = payload?.choices?.[0]?.message?.content;
+    const text = Array.isArray(content) ? content.map((part: any) => part?.text || '').join('') : content;
+    if (typeof text !== 'string' || !text.trim()) throw new Error('The configured model returned an empty response.');
+    return text.trim();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Health check — reports real configuration, not fictional device telemetry.
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'online',
     system: 'J.A.R.V.I.S. Mark VII OS',
-    hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+    aiProvider: 'self-hosted-openai-compatible',
+    modelConfigured: Boolean(process.env.AI_BASE_URL),
+    model: process.env.AI_MODEL || 'qwen2.5:3b',
+    offlineModel: 'not-installed',
     timestamp: new Date().toISOString(),
   });
 });
 
-// Chat endpoint
+// Chat endpoint — talks only to the user's configured open-weight model server.
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { message, history = [], languageMode = 'auto' } = req.body || {};
-
-  try {
-    if (!message || typeof message !== 'string') {
-      res.status(400).json({ error: 'Message is required' });
-      return;
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      res.status(503).json({
-        error: 'GEMINI_API_KEY is not configured on the server. Please check the Secrets panel in AI Studio.',
-        fallbackText: 'Sir, my neural uplink requires a valid Gemini API key in the environment to connect to Stark satellite arrays.',
-        speechText: 'Sir, my neural uplink requires a valid Gemini API key in the environment.'
-      });
-      return;
-    }
-
-    const ai = getAI();
-
-    // Map conversation history
-    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
-
-    // Language hint
-    let langInstruction = '';
-    if (languageMode === 'hi') {
-      langInstruction = '\n[User has selected Hindi mode. Answer primarily in natural Hindi / हिंदी].';
-    } else if (languageMode === 'en') {
-      langInstruction = '\n[User has selected English mode. Answer in English with Stark Jarvis tone].';
-    }
-
-    // Add previous history (max last 8 turns for speed & context)
-    if (Array.isArray(history)) {
-      const recentHistory = history.slice(-8);
-      for (const item of recentHistory) {
-        if (item.text && (item.sender === 'user' || item.sender === 'jarvis')) {
-          contents.push({
-            role: item.sender === 'user' ? 'user' : 'model',
-            parts: [{ text: item.text }],
-          });
-        }
-      }
-    }
-
-    // Add current user message
-    contents.push({
-      role: 'user',
-      parts: [{ text: message + langInstruction }],
+  if (typeof message !== 'string' || !message.trim()) {
+    res.status(400).json({ error: 'Message is required.' });
+    return;
+  }
+  if (!process.env.AI_BASE_URL) {
+    res.status(503).json({
+      error: 'JARVIS का अपना AI मॉडल सर्वर अभी कनेक्ट नहीं है। AI_BASE_URL में अपने मॉडल सर्वर का HTTPS endpoint जोड़ें।',
+      code: 'OWN_AI_NOT_CONFIGURED',
     });
-
-    console.log(`[J.A.R.V.I.S.] Processing directive: "${message.slice(0, 45)}" (Lang: ${languageMode})`);
-
-    let replyText = '';
-    let isQuotaLimit = false;
-    let lastGeminiError = '';
-
-    // Try cloud models with timeout
-    const cloudModels = ['gemini-3.8-flash', 'gemini-3.7-flash'];
-
-    for (const model of cloudModels) {
-      try {
-        const generatePromise = ai.models.generateContent({
-          model,
-          contents: contents,
-          config: {
-            systemInstruction: JARVIS_SYSTEM_INSTRUCTION,
-          },
-        });
-
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Gemini request timed out after 25 seconds')), 25000)
-        );
-
-        const response: any = await Promise.race([generatePromise, timeoutPromise]);
-        if (response && response.text) {
-          replyText = response.text;
-          break;
-        }
-      } catch (err: any) {
-        const errMsg = String(err?.message || err);
-        lastGeminiError = errMsg.slice(0, 700);
-        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.toLowerCase().includes('quota')) {
-          isQuotaLimit = true;
-        }
-        console.error(`[J.A.R.V.I.S.] Gemini model ${model} failed:`, errMsg);
+    return;
+  }
+  const languageHint = languageMode === 'hi'
+    ? 'Answer in natural Hindi.'
+    : languageMode === 'en'
+      ? 'Answer in English.'
+      : 'Reply in the language used by the user (Hindi, Hinglish, or English).';
+  const chatMessages: Array<{ role: string; content: string }> = [
+    { role: 'system', content: JARVIS_SYSTEM_INSTRUCTION + '\\n' + languageHint },
+  ];
+  if (Array.isArray(history)) {
+    for (const item of history.slice(-8)) {
+      if (typeof item?.text === 'string' && item.text.trim()) {
+        if (item.sender === 'user') chatMessages.push({ role: 'user', content: item.text.slice(0, 6000) });
+        else if (item.sender === 'jarvis') chatMessages.push({ role: 'assistant', content: item.text.slice(0, 6000) });
       }
     }
-
-    // Never present canned heuristic text as a genuine Gemini answer.
-    // Return a clear service error so the app can show the real connection/quota issue.
-    if (!replyText) {
-      res.status(isQuotaLimit ? 429 : 502).json({
-        error: isQuotaLimit
-          ? 'Gemini API quota is currently exhausted. Check the Google AI Studio quota or billing settings.'
-          : 'Gemini did not return a response. Please retry in a moment.',
-        code: isQuotaLimit ? 'GEMINI_QUOTA' : 'GEMINI_UNAVAILABLE',
-        diagnostic: lastGeminiError
-          ? lastGeminiError.replace(apiKey, '[REDACTED]').slice(0, 500)
-          : 'No provider error details were returned.',
-      });
-      return;
-    }
-
-    const speechText = sanitizeForSpeech(replyText);
-    const isHindi = /[\u0900-\u097F]/.test(replyText);
-
+  }
+  chatMessages.push({ role: 'user', content: message.trim().slice(0, 12000) });
+  try {
+    const replyText = await generateWithOwnModel(chatMessages);
     res.json({
       reply: replyText,
-      speechText,
-      language: isHindi ? 'hi-IN' : 'en-US',
+      speechText: sanitizeForSpeech(replyText),
+      language: /[\\u0900-\\u097F]/.test(replyText) ? 'hi-IN' : 'en-US',
       timestamp: new Date().toISOString(),
-      isLocalEngine: false,
-      quotaReserve: isQuotaLimit,
+      aiProvider: 'self-hosted-openai-compatible',
+      model: process.env.AI_MODEL || 'qwen2.5:3b',
     });
   } catch (error: any) {
-    console.error('[J.A.R.V.I.S.] Gemini chat request failed:', error?.message || error);
+    const detail = String(error?.message || error || 'Unknown model server error').slice(0, 500);
+    console.error('[J.A.R.V.I.S.] Own AI request failed:', detail);
     res.status(502).json({
-      error: 'Gemini chat request failed. Check the Render logs and Gemini API key/quota, then retry.',
-      code: 'GEMINI_REQUEST_FAILED',
+      error: 'JARVIS के अपने AI मॉडल से जवाब नहीं मिला। मॉडल सर्वर और उसका endpoint जाँचें।',
+      code: 'OWN_AI_REQUEST_FAILED',
+      diagnostic: detail,
     });
   }
 });
 
-// Server-Side Gemini Text-to-Speech (TTS) Endpoint (/api/voice/tts)
-app.post('/api/voice/tts', async (req: Request, res: Response) => {
-  try {
-    const { text } = req.body || {};
-    if (!text || typeof text !== 'string') {
-      res.status(400).json({ error: 'Text is required for TTS.' });
-      return;
-    }
-
-    if (!process.env.GEMINI_API_KEY) {
-      res.status(503).json({ error: 'GEMINI_API_KEY not configured.' });
-      return;
-    }
-
-    const ai = getAI();
-    const clean = sanitizeForSpeech(text).slice(0, 600);
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-tts-preview',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: clean,
-            },
-          ],
-        },
-      ],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Puck' },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
-      res.status(502).json({ error: 'No audio returned from TTS model.' });
-      return;
-    }
-
-    res.json({
-      ok: true,
-      audioBase64: base64Audio,
-      mimeType: 'audio/wav',
-      timestamp: new Date().toISOString(),
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: 'TTS generation error: ' + err.message });
-  }
+// Voice stays on-device through Android/browser SpeechRecognition and SpeechSynthesis.
+// No third-party AI voice service is called by these endpoints.
+app.post('/api/voice/tts', (req: Request, res: Response) => {
+  res.status(501).json({ error: 'Server TTS is disabled. Use the device voice engine.' });
 });
-
-// Server-Side Gemini Audio Transcription (STT) Endpoint (/api/voice/transcribe)
-app.post('/api/voice/transcribe', async (req: Request, res: Response) => {
-  try {
-    const { audioBase64, mimeType = 'audio/webm', language = 'auto' } = req.body || {};
-    if (!audioBase64 || typeof audioBase64 !== 'string') {
-      res.status(400).json({ error: 'audioBase64 is required.' });
-      return;
-    }
-
-    if (!process.env.GEMINI_API_KEY) {
-      res.status(503).json({ error: 'GEMINI_API_KEY not configured.' });
-      return;
-    }
-
-    const ai = getAI();
-    const langPrompt =
-      language === 'hi-IN' || language === 'hi'
-        ? 'Transcribe this spoken audio accurately in Hindi or Hinglish. Output only the spoken words.'
-        : 'Transcribe this spoken audio accurately in English or Hindi/Hinglish as spoken. Output only the spoken words.';
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-transcribe',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType,
-              data: audioBase64,
-            },
-          },
-          { text: langPrompt },
-        ],
-      },
-    });
-
-    res.json({
-      ok: true,
-      transcript: (response.text || '').trim(),
-      timestamp: new Date().toISOString(),
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Audio transcription error: ' + err.message });
-  }
+app.post('/api/voice/transcribe', (req: Request, res: Response) => {
+  res.status(501).json({ error: 'Server transcription is disabled. Use on-device speech recognition.' });
 });
 
 // Protocol execution endpoint
