@@ -23,7 +23,6 @@ import { FileModifierPanel } from './components/FileModifierPanel';
 import { VersionStatusPayload, formatExactSystemTimestamp } from './utils/versionManager';
 import { ownerAuthManager } from './utils/ownerAuth';
 import { deviceBridge } from './utils/deviceBridge';
-import { generateJarvisLocalResponse } from './utils/jarvisHeuristics';
 import { upgradeManager, SystemUpgrade } from './utils/upgradeSystem';
 import { JarvisTheme, themeManager } from './utils/themeSystem';
 import { speechEngine } from './utils/speech';
@@ -468,22 +467,17 @@ export default function App() {
           handleSpeak(data.speechText, data.language, jarvisMsgId);
         }
       } catch (err: any) {
-        console.warn('Cloud chat unavailable; using on-device local response:', err);
-        const local = generateJarvisLocalResponse(userInput, languageMode);
-        const fallbackId = 'jarvis-local-' + Date.now();
-        const fallbackMessage: ChatMessage = {
-          id: fallbackId,
+        console.error('JARVIS cloud chat failed:', err);
+        const detail = err?.message || 'Network/API connection failed.';
+        setErrorMessage(`Gemini AI उपलब्ध नहीं है: ${detail}`);
+        const errorMessage: ChatMessage = {
+          id: 'jarvis-error-' + Date.now(),
           sender: 'jarvis',
-          text: local.text + '\n\n(स्थानीय मोड: AI सर्वर उपलब्ध नहीं है। इंटरनेट/API कनेक्शन मिलने पर ही Gemini AI चैट चलेगी।)',
-          speechText: local.speechText,
-          language: local.isHindi ? 'hi-IN' : 'en-US',
+          text: 'सर, अभी Gemini AI सर्वर से जवाब नहीं मिला। इंटरनेट कनेक्शन, Render service और Gemini API quota जाँचकर फिर कोशिश करें।',
+          language: 'hi-IN',
           timestamp: new Date().toISOString(),
         };
-
-        setMessages((prev) => [...prev, fallbackMessage]);
-        if (autoSpeak) {
-          handleSpeak(fallbackMessage.speechText!, fallbackMessage.language, fallbackId);
-        }
+        setMessages((prev) => [...prev, errorMessage]);
       } finally {
         setIsThinking(false);
       }
