@@ -1,3 +1,6 @@
+import { Capacitor } from '@capacitor/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
+
 /**
  * Robust Dual-Engine Speech Recognition (STT) and Speech Synthesis (TTS) system for J.A.R.V.I.S.
  * - Starts browser SpeechRecognition synchronously on user click (preserving user-gesture activation).
@@ -5,6 +8,7 @@
  *   commands are never dropped even on mobile Chrome/WebView.
  * - Falls back to MediaRecorder + on-device speech recognition
  *   if Web Speech API is unavailable or blocked.
+ * - Native Android TTS through Capacitor, with browser TTS as web fallback.
  * - Dual-Engine TTS: Uses native Hindi (hi-IN) / English voices, automatically transliterates
  *   Devanagari to phonetic Hinglish if the OS lacks a native hi-IN voice pack (preventing silent TTS drops),
  *   and falls back to device speech synthesis if browser SpeechSynthesis fails.
@@ -521,6 +525,27 @@ export class JarvisSpeechEngine {
 
       this.stopSpeaking();
 
+      // Android APKs use the native Android TextToSpeech service instead of WebView speechSynthesis.
+      if (Capacitor.isNativePlatform()) {
+        onStart?.();
+        TextToSpeech.speak({
+          text: cleanText,
+          lang: langHint || (/[\\u0900-\\u097F]/.test(cleanText) ? 'hi-IN' : 'en-IN'),
+          rate: Math.max(0.7, Math.min(1.5, rate)),
+          pitch: Math.max(0.7, Math.min(1.3, pitch)),
+          volume: 1.0,
+          queueStrategy: 0,
+        }).then(() => {
+          onEnd?.();
+          resolve();
+        }).catch((error) => {
+          onError?.(error);
+          onEnd?.();
+          resolve();
+        });
+        return;
+      }
+
       if (!this.isSynthesisSupported()) {
         onError?.('speech-synthesis-failed'); onEnd?.(); resolve();
         return;
@@ -676,6 +701,9 @@ export class JarvisSpeechEngine {
   }
 
   public stopSpeaking() {
+    if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
+      TextToSpeech.stop().catch(() => undefined);
+    }
     if (this.speechDispatchTimeout) {
       clearTimeout(this.speechDispatchTimeout);
       this.speechDispatchTimeout = null;
