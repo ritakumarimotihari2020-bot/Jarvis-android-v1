@@ -43,10 +43,28 @@ const capacitorOrigins = new Set([
   'http://localhost',
   'http://localhost:5173',
 ]);
+const configuredOrigins = new Set(
+  (process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
+);
 app.use('/api', (req: Request, res: Response, next) => {
   const origin = req.headers.origin;
   if (origin) {
-    const allowed = capacitorOrigins.has(origin) || origin === process.env.RENDER_EXTERNAL_URL;
+    let isSecureWebOrigin = false;
+    try {
+      const parsedOrigin = new URL(origin);
+      isSecureWebOrigin = parsedOrigin.protocol === 'https:' && !parsedOrigin.username && !parsedOrigin.password;
+    } catch {
+      isSecureWebOrigin = false;
+    }
+    // The cloud chat API is public; CORS is browser access control, not authentication.
+    // Allow native Capacitor clients, explicitly configured origins, and HTTPS web app origins.
+    const allowed = capacitorOrigins.has(origin)
+      || configuredOrigins.has(origin.replace(/\/+$/, ''))
+      || origin === process.env.RENDER_EXTERNAL_URL
+      || isSecureWebOrigin;
     if (!allowed) {
       res.status(403).json({ error: 'Origin is not allowed to access JARVIS cloud APIs.' });
       return;
