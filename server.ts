@@ -152,11 +152,11 @@ async function generateWithOwnModel(messages: Array<{ role: string; content: str
         // Ollama accepts these runtime options on its OpenAI-compatible endpoint.
         keep_alive: '30m',
         options: {
-          num_ctx: 256,
-          num_predict: 32,
+          num_ctx: 192,
+          num_predict: 16,
           num_thread: 2,
         },
-        max_tokens: 32,
+        max_tokens: 16,
       }),
     });
     const raw = await response.text();
@@ -211,14 +211,14 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     { role: 'system', content: JARVIS_SYSTEM_INSTRUCTION + '\n' + languageHint },
   ];
   if (Array.isArray(history)) {
-    for (const item of history.slice(-3)) {
+    for (const item of history.slice(-1)) {
       if (typeof item?.text === 'string' && item.text.trim()) {
-        if (item.sender === 'user') chatMessages.push({ role: 'user', content: item.text.slice(0, 1200) });
-        else if (item.sender === 'jarvis') chatMessages.push({ role: 'assistant', content: item.text.slice(0, 6000) });
+        if (item.sender === 'user') chatMessages.push({ role: 'user', content: item.text.slice(0, 200) });
+        else if (item.sender === 'jarvis') chatMessages.push({ role: 'assistant', content: item.text.slice(0, 300) });
       }
     }
   }
-  chatMessages.push({ role: 'user', content: message.trim().slice(0, 3000) });
+  chatMessages.push({ role: 'user', content: message.trim().slice(0, 800) });
   try {
     const replyText = await generateWithOwnModel(chatMessages);
     res.json({
