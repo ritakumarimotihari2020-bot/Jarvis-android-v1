@@ -24,6 +24,71 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(express.json({ limit: '10mb' }));
 
+/**
+ * Public cloud deployment safety boundary.
+ * Only chat/voice, health, version status and harmless demo protocols are exposed.
+ * Device control, file modification, shell/desktop actions and admin mutation APIs
+ * remain disabled on the public internet.
+ */
+app.set('trust proxy', 1);
+const publicApiRoutes = new Set([
+  'GET /api/health',
+  'GET /api/version/status',
+  'POST /api/chat',
+  'POST /api/voice/tts',
+  'POST /api/voice/transcribe',
+  'POST /api/protocol',
+]);
+const capacitorOrigins = new Set([
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
+  'http://localhost:5173',
+]);
+app.use('/api', (req: Request, res: Response, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    const allowed = capacitorOrigins.has(origin) || origin === process.env.RENDER_EXTERNAL_URL;
+    if (!allowed) {
+      res.status(403).json({ error: 'Origin is not allowed to access JARVIS cloud APIs.' });
+      return;
+    }
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  }
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  if (!publicApiRoutes.has(`${req.method} ${req.path}`)) {
+    res.status(404).json({ error: 'This API route is disabled on the public cloud deployment.' });
+    return;
+  }
+  next();
+});
+
+// Basic per-IP abuse guard for public AI endpoints (20 requests/minute).
+const apiRateWindows = new Map<string, { count: number; resetAt: number }>();
+app.use('/api', (req: Request, res: Response, next) => {
+  if (req.method !== 'POST') return next();
+  const now = Date.now();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const window = apiRateWindows.get(ip);
+  if (!window || now >= window.resetAt) {
+    apiRateWindows.set(ip, { count: 1, resetAt: now + 60_000 });
+    return next();
+  }
+  if (window.count >= 20) {
+    res.status(429).json({ error: 'JARVIS cloud rate limit reached. Please try again in one minute.' });
+    return;
+  }
+  window.count += 1;
+  next();
+});
+
+
 // Helper to strip markdown formatting for TTS speech
 function sanitizeForSpeech(text: string): string {
   return text
