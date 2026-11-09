@@ -19,12 +19,12 @@ export function generateJarvisLocalResponse(
   // 1. Hindi Queries
   if (isHindiMode) {
     if (query.includes('नमस्ते') || query.includes('hello') || query.includes('हाय') || query.includes('प्रणाम')) {
-      const text = `नमस्ते सर। जार्विस आपकी सेवा में सदैव तत्पर है। सभी आंतरिक प्रणालियां और आर्क रिएक्टर 100% क्षमता पर कार्य कर रहे हैं। आज्ञा दीजिए, क्या सहायता करूँ?`;
+      const text = `नमस्ते सर। जार्विस आपकी सेवा में सदैव तत्पर है। मैं अभी वास्तविक डिवाइस टेलीमेट्री नहीं पढ़ सकता, इसलिए सिस्टम की स्थिति की पुष्टि नहीं कर सकता। आज्ञा दीजिए, क्या सहायता करूँ?`;
       return { text, speechText: 'नमस्ते सर। जार्विस आपकी सेवा में सदैव तत्पर है। आज्ञा दीजिए, क्या सहायता करूँ?', isHindi: true };
     }
 
     if (query.includes('हाल') || query.includes('कैसा') || query.includes('स्थिति') || query.includes('हाल-चाल')) {
-      const text = `मैं पूर्णतः कुशल हूँ सर। क्वांटम बफर 99.8% पर स्थिर है, और कोर तापमान 42.4 डिग्री सेल्सियस पर सामान्य है। आपका दिन कैसा बीत रहा है सर?`;
+      const text = `मैं पूर्णतः कुशल हूँ सर। मेरे पास वास्तविक तापमान या सिस्टम टेलीमेट्री उपलब्ध नहीं है। आपका दिन कैसा बीत रहा है सर?`;
       return { text, speechText: 'मैं पूर्णतः कुशल हूँ सर। सभी प्रणालियां सामान्य रूप से कार्य कर रही हैं।', isHindi: true };
     }
 
@@ -39,7 +39,7 @@ export function generateJarvisLocalResponse(
     }
 
     if (query.includes('मौसम') || query.includes('हवा') || query.includes('तापमान')) {
-      const text = `वायुमंडलीय उपग्रह स्कैन के अनुसार स्थानीय परिवेश शांत है। तापमान 24 डिग्री सेल्सियस, आर्द्रता 48%, और दृश्यता पूर्णतः स्पष्ट है सर।`;
+      const text = `मेरे पास अभी लाइव मौसम डेटा उपलब्ध नहीं है। कृपया मौसम ऐप या लाइव मौसम सेवा जाँचें।`;
       return { text, speechText: 'स्थानीय वायुमंडलीय स्थिति शांत एवं अनुकूल है सर।', isHindi: true };
     }
 
@@ -69,7 +69,7 @@ export function generateJarvisLocalResponse(
     }
 
     // Default polite Hindi response
-    const text = `जी सर, आपका निर्देश स्वीकार किया गया। मेरी स्थानीय तंत्रिका प्रणाली आपके इस विषय पर पूर्ण विचार कर रही है। कृपया इस पर और अधिक विवरण प्रदान करें, ताकि मैं सर्वोत्तम समाधान प्रस्तुत कर सकूँ।\n\n*(नोट: क्लाउड उपग्रह दैनिक निःशुल्क सीमा पर है; स्थानीय जार्विस कोर सक्रिय है।)*`;
+    const text = `सर, Gemini AI सर्वर अभी उपलब्ध नहीं है, इसलिए मैं इस अनुरोध का विश्वसनीय उत्तर नहीं दे सकता। इंटरनेट कनेक्शन और API सेवा जाँचकर दोबारा प्रयास करें।`;
     const speechText = 'जी सर, आपका निर्देश स्वीकार किया गया। स्थानीय जार्विस कोर सक्रिय है।';
     return { text, speechText, isHindi: true };
   }
@@ -122,7 +122,7 @@ export function generateJarvisLocalResponse(
   }
 
   if (query.includes('status') || query.includes('diagnostic') || query.includes('system') || query.includes('health') || query.includes('how are you')) {
-    const text = `All systems nominal, sir.\n• Arc Reactor Output: 3.8 Gigawatts\n• Core Temperature: 42.4°C\n• Memory Buffer: 99.8% Available\n• Security Integrity: Level 5 Enforced\n\nNo internal anomalies reported across the grid.`;
+    const text = `I cannot read live device telemetry from this local fallback, so I cannot verify system health, temperatures, battery, or security status. Please check the device settings for real values.`;
     return { text, speechText: 'All systems nominal, sir. Core at 100 percent capacity and running smoothly.', isHindi: false };
   }
 
