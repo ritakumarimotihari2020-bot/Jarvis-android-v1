@@ -148,7 +148,15 @@ async function generateWithOwnModel(messages: Array<{ role: string; content: str
         model: process.env.AI_MODEL || 'qwen2.5:3b',
         messages,
         temperature: 0.7,
-        max_tokens: 1200,
+        // Keep the small self-hosted Ollama model within Railway's limited memory.
+        // Ollama accepts these runtime options on its OpenAI-compatible endpoint.
+        keep_alive: '30m',
+        options: {
+          num_ctx: 1024,
+          num_predict: 256,
+          num_thread: 2,
+        },
+        max_tokens: 256,
       }),
     });
     const raw = await response.text();
