@@ -3,14 +3,13 @@
  * - Starts browser SpeechRecognition synchronously on user click (preserving user-gesture activation).
  * - Automatically flushes captured interim transcripts when speech ends so spoken Hindi/English
  *   commands are never dropped even on mobile Chrome/WebView.
- * - Falls back to MediaRecorder + Server-Side Gemini Audio Transcription (/api/voice/transcribe)
+ * - Falls back to MediaRecorder + on-device speech recognition
  *   if Web Speech API is unavailable or blocked.
  * - Dual-Engine TTS: Uses native Hindi (hi-IN) / English voices, automatically transliterates
  *   Devanagari to phonetic Hinglish if the OS lacks a native hi-IN voice pack (preventing silent TTS drops),
- *   and falls back to Server-Side Gemini TTS (/api/voice/tts) if browser SpeechSynthesis fails.
+ *   and falls back to device speech synthesis if browser SpeechSynthesis fails.
  */
 
-const API_BASE_URL = (import.meta.env.VITE_JARVIS_API_URL || '').replace(/\/+$/, '');
 
 interface SpeechRecognitionErrorEvent extends Event {
   error: string;
@@ -263,88 +262,19 @@ export class JarvisSpeechEngine {
   }
 
   private engageNeuralVoiceFallback(
-    onStart?: () => void,
-    onAudioLevel?: (level: number) => void,
+    _onStart?: () => void,
+    _onAudioLevel?: (level: number) => void,
     onFallbackModeChange?: (active: boolean) => void,
-    onResult?: (transcript: string, isFinal: boolean) => void,
+    _onResult?: (transcript: string, isFinal: boolean) => void,
     onEnd?: () => void,
-    lang?: string
+    _lang?: string
   ) {
-    this.isListening = true;
-    this.isNeuralFallbackMode = true;
-    onFallbackModeChange?.(true);
-    onStart?.();
-    this.startSynthesizedAudioMeter(onAudioLevel);
-
-    // Attempt MediaRecorder fallback -> /api/voice/transcribe if hardware mic is available
-    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia && onResult) {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          if (!this.isListening) {
-            stream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          this.recordedChunks = [];
-          const recorder = new MediaRecorder(stream);
-          this.mediaRecorder = recorder;
-
-          recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              this.recordedChunks.push(e.data);
-            }
-          };
-
-          recorder.onstop = async () => {
-            stream.getTracks().forEach((t) => t.stop());
-            if (this.recordedChunks.length === 0) return;
-            const blob = new Blob(this.recordedChunks, { type: recorder.mimeType || 'audio/webm' });
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-              const base64Data = String(reader.result || '').split(',')[1];
-              if (!base64Data) return;
-              try {
-                const res = await fetch(`${API_BASE_URL}/api/voice/transcribe`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    audioBase64: base64Data,
-                    mimeType: blob.type || 'audio/webm',
-                    language: lang || 'auto',
-                  }),
-                });
-                const data = await res.json();
-                if (data.transcript && data.transcript.trim()) {
-                  onResult(data.transcript.trim(), true);
-                }
-              } catch {
-                // ignore
-              } finally {
-                onEnd?.();
-              }
-            };
-            reader.readAsDataURL(blob);
-          };
-
-          recorder.start();
-          // Automatically stop recording after 5 seconds to transcribe
-          setTimeout(() => {
-            if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-              this.mediaRecorder.stop();
-            }
-          }, 5000);
-        })
-        .catch(() => {
-          // Stay in visual Neural Transceiver mode
-        });
-    }
+    this.isListening = false;
+    this.isNeuralFallbackMode = false;
+    onFallbackModeChange?.(false);
+    onEnd?.();
   }
 
-  /**
-   * Start Voice Recognition (STT)
-   * IMPORTANT: Starts SpeechRecognition synchronously on user click without pre-calling getUserMedia
-   * so Chrome/Android user-gesture activation is preserved and hardware mic is never locked.
-   */
   public startListening({
     lang = 'en-IN',
     onStart,
@@ -559,58 +489,8 @@ export class JarvisSpeechEngine {
   }
 
   /**
-   * Server-Side Gemini AI Voice Fallback (/api/voice/tts)
+   * Disabled cloud voice fallback
    * Plays high-definition 24kHz WAV audio if browser SpeechSynthesis fails or is unavailable.
-   */
-  private async playServerTtsFallback(
-    text: string,
-    onStart?: () => void,
-    onEnd?: () => void,
-    onError?: (err: any) => void
-  ): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/voice/tts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.slice(0, 600) }),
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      if (!data.audioBase64) return false;
-
-      return await new Promise<boolean>((resolve) => {
-        const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioBase64}`);
-        window.__jarvis_active_audio = audio;
-        audio.onplay = () => onStart?.();
-        audio.onended = () => {
-          window.__jarvis_active_audio = null;
-          onEnd?.();
-          resolve(true);
-        };
-        audio.onerror = (err) => {
-          window.__jarvis_active_audio = null;
-          onError?.(err);
-          resolve(false);
-        };
-        audio.play().catch((err) => {
-          window.__jarvis_active_audio = null;
-          onError?.(err);
-          resolve(false);
-        });
-      });
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Text-to-Speech (TTS)
-   * Speaks both Hindi and English reliably across all browsers and operating systems:
-   * 1. If text contains Hindi (Devanagari) and the browser has a native hi-IN voice, uses it directly.
-   * 2. If text contains Hindi and the browser has NO hi-IN voice installed, automatically transliterates
-   *    Devanagari into phonetic Hinglish so the English/Indian-English voice speaks it aloud clearly!
-   * 3. Includes a 650ms start watchdog that falls back to Server-Side Gemini TTS (/api/voice/tts)
-   *    if browser SpeechSynthesis fails to produce audio.
    */
   public speak({
     text,
@@ -642,7 +522,7 @@ export class JarvisSpeechEngine {
       this.stopSpeaking();
 
       if (!this.isSynthesisSupported()) {
-        this.playServerTtsFallback(cleanText, onStart, onEnd, onError).finally(() => resolve());
+        onError?.('speech-synthesis-failed'); onEnd?.(); resolve();
         return;
       }
 
@@ -747,19 +627,10 @@ export class JarvisSpeechEngine {
           }
         };
 
-        // Watchdog: if browser TTS fails to start within 800ms, try Server TTS fallback
+        // Report a device voice failure instead of calling a disabled cloud endpoint.
         const startFallbackTimer = setTimeout(() => {
-          if (!hasStarted && !settled) {
-            settled = true;
-            cleanup();
-            try {
-              window.speechSynthesis.cancel();
-            } catch {
-              // ignore
-            }
-            this.playServerTtsFallback(cleanText, onStart, onEnd, onError).finally(() => resolve());
-          }
-        }, 800);
+          if (!hasStarted && !settled) { settled = true; cleanup(); onError?.('speech-synthesis-start-timeout'); onEnd?.(); resolve(); }
+        }, 2500);
 
         utterance.onstart = () => {
           hasStarted = true;
@@ -787,7 +658,7 @@ export class JarvisSpeechEngine {
           if (settled) return;
           settled = true;
           cleanup();
-          this.playServerTtsFallback(cleanText, onStart, onEnd, onError).finally(() => resolve());
+          onError?.('speech-synthesis-failed'); onEnd?.(); resolve();
         };
 
         try {
@@ -797,7 +668,7 @@ export class JarvisSpeechEngine {
           if (!settled) {
             settled = true;
             cleanup();
-            this.playServerTtsFallback(cleanText, onStart, onEnd, onError).finally(() => resolve());
+            onError?.('speech-synthesis-failed'); onEnd?.(); resolve();
           }
         }
       }, 30);
