@@ -129,7 +129,7 @@ export default function App() {
       const query = clientLoadedVersionRef.current
         ? `?clientVersion=${encodeURIComponent(clientLoadedVersionRef.current)}`
         : '';
-      const res = await fetch(`/api/version/status${query}`);
+      const res = await fetch(`${API_BASE_URL}/api/version/status${query}`);
       const data: VersionStatusPayload = await res.json();
       if (data && data.currentVersion) {
         if (!clientLoadedVersionRef.current) {
@@ -572,7 +572,7 @@ export default function App() {
       setIsThinking(true);
 
       try {
-        const response = await fetch('/api/protocol', {
+        const response = await fetch(`${API_BASE_URL}/api/protocol`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ protocol }),
