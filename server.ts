@@ -136,7 +136,7 @@ function ownModelEndpoint(): string {
 async function generateWithOwnModel(messages: Array<{ role: string; content: string }>): Promise<string> {
   const endpoint = ownModelEndpoint();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 300000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (process.env.AI_API_KEY) headers.Authorization = `Bearer ${process.env.AI_API_KEY}`;
@@ -152,11 +152,11 @@ async function generateWithOwnModel(messages: Array<{ role: string; content: str
         // Ollama accepts these runtime options on its OpenAI-compatible endpoint.
         keep_alive: '30m',
         options: {
-          num_ctx: 512,
-          num_predict: 256,
+          num_ctx: 384,
+          num_predict: 64,
           num_thread: 2,
         },
-        max_tokens: 256,
+        max_tokens: 64,
       }),
     });
     const raw = await response.text();
