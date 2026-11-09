@@ -150,7 +150,10 @@ export class DeviceBridge {
         } else if (item.id === 'app-browser') {
           window.open('https://google.com', '_blank');
         } else if (item.id === 'app-youtube') {
-          window.open('https://youtube.com', '_blank');
+          // Ask Android to open the installed YouTube app, not an in-WebView browser tab.
+          // Android resolves this package-targeted intent when the official app is installed.
+          window.location.href =
+            'intent://www.youtube.com/#Intent;scheme=https;package=com.google.android.youtube;end';
         } else {
           // Trigger intent / deep link fallback
           const iframe = document.createElement('iframe');
@@ -286,6 +289,22 @@ export class DeviceBridge {
         targetPlatform: 'ANDROID',
         action: 'OPEN_APP',
         targetItem: 'app-camera',
+        requiresSensitiveConfirm: false,
+      };
+    }
+
+    if (
+      /\\b(open|launch|start)\\s+(the\\s+)?(youtube|you tube)\\b/.test(q) ||
+      q.includes('youtube kholo') ||
+      q.includes('यूट्यूब खोलो') ||
+      q.includes('यूट्यूब ऐप खोलो') ||
+      q.includes('youtube app kholo')
+    ) {
+      return {
+        isDeviceCommand: true,
+        targetPlatform: 'ANDROID',
+        action: 'OPEN_APP',
+        targetItem: 'app-youtube',
         requiresSensitiveConfirm: false,
       };
     }
