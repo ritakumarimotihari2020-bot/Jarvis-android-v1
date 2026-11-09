@@ -9,7 +9,6 @@ import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenAI } from '@google/genai';
-import { generateJarvisLocalResponse } from './src/utils/jarvisHeuristics.ts';
 
 const execAsync = promisify(exec);
 
@@ -206,7 +205,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     let isQuotaLimit = false;
 
     // Try cloud models with timeout
-    const cloudModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+    const cloudModels = ['gemini-3.8-flash', 'gemini-3.7-flash'];
 
     for (const model of cloudModels) {
       try {
@@ -219,7 +218,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         });
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Gateway timeout')), 5000)
+          setTimeout(() => reject(new Error('Gemini request timed out after 25 seconds')), 25000)
         );
 
         const response: any = await Promise.race([generatePromise, timeoutPromise]);
@@ -236,12 +235,16 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       }
     }
 
-    // If cloud models hit quota limit (429) or are temporarily unavailable,
-    // seamlessly engage Stark Local Heuristics reasoning engine
+    // Never present canned heuristic text as a genuine Gemini answer.
+    // Return a clear service error so the app can show the real connection/quota issue.
     if (!replyText) {
-      console.log(`[J.A.R.V.I.S.] Engaged Stark Local Heuristic Engine (Quota reserve: ${isQuotaLimit})`);
-      const local = generateJarvisLocalResponse(message, languageMode as any);
-      replyText = local.text;
+      res.status(isQuotaLimit ? 429 : 502).json({
+        error: isQuotaLimit
+          ? 'Gemini API quota is currently exhausted. Check the Google AI Studio quota or billing settings.'
+          : 'Gemini did not return a response. Please retry in a moment.',
+        code: isQuotaLimit ? 'GEMINI_QUOTA' : 'GEMINI_UNAVAILABLE',
+      });
+      return;
     }
 
     const speechText = sanitizeForSpeech(replyText);
@@ -252,18 +255,14 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       speechText,
       language: isHindi ? 'hi-IN' : 'en-US',
       timestamp: new Date().toISOString(),
-      isLocalEngine: !replyText,
+      isLocalEngine: false,
       quotaReserve: isQuotaLimit,
     });
   } catch (error: any) {
-    // Ultimate safety: never break conversational flow
-    const local = generateJarvisLocalResponse(message || 'status', languageMode as any);
-    res.json({
-      reply: local.text,
-      speechText: local.speechText,
-      language: local.isHindi ? 'hi-IN' : 'en-US',
-      timestamp: new Date().toISOString(),
-      isLocalEngine: true,
+    console.error('[J.A.R.V.I.S.] Gemini chat request failed:', error?.message || error);
+    res.status(502).json({
+      error: 'Gemini chat request failed. Check the Render logs and Gemini API key/quota, then retry.',
+      code: 'GEMINI_REQUEST_FAILED',
     });
   }
 });
