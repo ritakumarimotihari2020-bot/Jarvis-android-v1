@@ -152,9 +152,9 @@ jobs:
           s = p.read_text()
           if "networkTimeout=" in s:
               import re
-              s = re.sub(r"networkTimeout=\\d+", "networkTimeout=120000", s)
+              s = re.sub(r"networkTimeout=\d+", "networkTimeout=120000", s)
           else:
-              s += "\\nnetworkTimeout=120000\\n"
+              s += "\nnetworkTimeout=120000\n"
           p.write_text(s)
           PY
           ./gradlew --no-daemon assembleDebug
