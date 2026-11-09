@@ -36,6 +36,8 @@ jobs:
         run: npm install
 
       - name: Build web app
+        env:
+          VITE_JARVIS_API_URL: ${{ secrets.JARVIS_API_BASE_URL }}
         run: npm run build
 
       - name: Generate Android project
