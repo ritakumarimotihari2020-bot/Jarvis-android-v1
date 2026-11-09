@@ -203,6 +203,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
     let replyText = '';
     let isQuotaLimit = false;
+    let lastGeminiError = '';
 
     // Try cloud models with timeout
     const cloudModels = ['gemini-3.8-flash', 'gemini-3.7-flash'];
@@ -228,10 +229,11 @@ app.post('/api/chat', async (req: Request, res: Response) => {
         }
       } catch (err: any) {
         const errMsg = String(err?.message || err);
-        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+        lastGeminiError = errMsg.slice(0, 700);
+        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.toLowerCase().includes('quota')) {
           isQuotaLimit = true;
-          // Continue to next model or local heuristic
         }
+        console.error(`[J.A.R.V.I.S.] Gemini model ${model} failed:`, errMsg);
       }
     }
 
@@ -243,6 +245,9 @@ app.post('/api/chat', async (req: Request, res: Response) => {
           ? 'Gemini API quota is currently exhausted. Check the Google AI Studio quota or billing settings.'
           : 'Gemini did not return a response. Please retry in a moment.',
         code: isQuotaLimit ? 'GEMINI_QUOTA' : 'GEMINI_UNAVAILABLE',
+        diagnostic: lastGeminiError
+          ? lastGeminiError.replace(apiKey, '[REDACTED]').slice(0, 500)
+          : 'No provider error details were returned.',
       });
       return;
     }
