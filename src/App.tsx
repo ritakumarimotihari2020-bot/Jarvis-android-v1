@@ -230,6 +230,7 @@ export default function App() {
       speechEngine
         .speak({
           text,
+          langHint,
           preferredVoiceURI,
           pitch: voicePitch,
           rate: voiceRate,
