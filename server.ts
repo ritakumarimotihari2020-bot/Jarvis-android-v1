@@ -2505,57 +2505,12 @@ app.post('/api/system/launch', (req: Request, res: Response) => {
   });
 });
 
-// 15. Multimodal Minecraft screen vision analysis using Gemini
-app.post('/api/minecraft/vision/analyze', async (req: Request, res: Response) => {
-  try {
-    const { sceneDescription = '' } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (apiKey) {
-      try {
-        const ai = getAI();
-        const prompt = `You are JARVIS analyzing a live Minecraft gameplay screen.
-Scene/Description: "${sceneDescription || 'Player standing in an open grassy plains biome near an exposed cave entrance at dusk. A stone quarry and wooden shelter are visible in the background.'}"
-Provide a JSON response with:
-{
-  "summary": "Concise tactical English summary of what you see on screen",
-  "hindiSummary": "Natural Hindi translation of the summary",
-  "detectedScene": "minecraft_overworld",
-  "vitalObservations": ["observation 1", "observation 2", "observation 3"],
-  "suggestedAction": "Tactical next move for the player or autonomous bot",
-  "confidence": 0.95
-}`;
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        });
-        const parsed = JSON.parse(response.text || '{}');
-        res.json(parsed);
-        return;
-      } catch (err) {
-        console.warn('[JARVIS Vision] Gemini error, using heuristic fallback:', err);
-      }
-    }
-
-    res.json({
-      summary: 'Visual scan shows overworld forest biome at dusk with clear line-of-sight to iron deposit.',
-      hindiSummary: 'दृश्य स्कैन से पता चलता है कि शाम के समय ओवरवर्ल्ड जंगल में आयरन अयस्क की स्पष्ट दृश्यता है।',
-      detectedScene: 'minecraft_overworld',
-      vitalObservations: [
-        'Health: 20/20 (Full)',
-        'Hunger: 19/20 (Full)',
-        'Hostiles: 0 within 16-block radius',
-        'Nearby resources: Exposed Coal & Iron Vein detected',
-      ],
-      suggestedAction: 'Equip Diamond Pickaxe, secure perimeter with torches, begin excavating iron blocks.',
-      confidence: 0.94,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Vision analysis failed: ' + err.message });
-  }
+// 15. Minecraft vision analysis requires a configured multimodal model adapter.
+app.post('/api/minecraft/vision/analyze', (req: Request, res: Response) => {
+  res.status(501).json({
+    error: 'Minecraft vision is not enabled. Configure a compatible multimodal model adapter first.',
+    code: 'VISION_MODEL_NOT_CONFIGURED',
+  });
 });
 
 // 7. Autonomous Design Synthesis endpoint
