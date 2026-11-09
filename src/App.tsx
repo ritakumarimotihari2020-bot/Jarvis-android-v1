@@ -680,6 +680,13 @@ export default function App() {
       }}
       className={`min-h-screen text-slate-100 flex flex-col relative overflow-x-hidden ${activeTheme.gridStyle} hud-scanlines selection:bg-cyan-500/30 selection:text-cyan-200 transition-all duration-300`}
     >
+      {/* Animated multicolor corner HUD — remains visible above the app UI */}
+      <div className="jarvis-corner-hud" aria-hidden="true">
+        <span className="jarvis-corner-ring jarvis-corner-tl" />
+        <span className="jarvis-corner-ring jarvis-corner-tr" />
+        <span className="jarvis-corner-ring jarvis-corner-bl" />
+        <span className="jarvis-corner-ring jarvis-corner-br" />
+      </div>
       {/* Top Futuristic HUD Header */}
       <HudHeader
         isAwake={isAwake}
