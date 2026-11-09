@@ -447,7 +447,8 @@ export default function App() {
         }
 
         if (!response.ok) {
-          throw new Error(data.error || 'Server connection error');
+          const diagnostic = typeof data.diagnostic === 'string' ? data.diagnostic : '';
+          throw new Error([data.error || 'Server connection error', diagnostic].filter(Boolean).join(' | '));
         }
 
         const jarvisMsgId = 'jarvis-' + Date.now();
@@ -473,7 +474,7 @@ export default function App() {
         const errorMessage: ChatMessage = {
           id: 'jarvis-error-' + Date.now(),
           sender: 'jarvis',
-          text: 'सर, अभी Gemini AI सर्वर से जवाब नहीं मिला। इंटरनेट कनेक्शन, Render service और Gemini API quota जाँचकर फिर कोशिश करें।',
+          text: `सर, Gemini अनुरोध असफल हुआ: ${detail}`,
           language: 'hi-IN',
           timestamp: new Date().toISOString(),
         };
