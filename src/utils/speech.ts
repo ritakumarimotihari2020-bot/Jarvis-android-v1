@@ -530,7 +530,7 @@ export class JarvisSpeechEngine {
         onStart?.();
         TextToSpeech.speak({
           text: cleanText,
-          lang: langHint || (/[\\u0900-\\u097F]/.test(cleanText) ? 'hi-IN' : 'en-IN'),
+          lang: langHint || (/[\u0900-\u097F]/.test(cleanText) ? 'hi-IN' : 'en-IN'),
           rate: Math.max(0.7, Math.min(1.5, rate)),
           pitch: Math.max(0.7, Math.min(1.3, pitch)),
           volume: 1.0,
