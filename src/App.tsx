@@ -1,3 +1,4 @@
+// Rebuild Android APK with configured remote JARVIS API URL
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
