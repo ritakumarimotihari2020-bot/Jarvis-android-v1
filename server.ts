@@ -8,7 +8,6 @@ import os from 'os';
 import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { GoogleGenAI } from '@google/genai';
 
 const execAsync = promisify(exec);
 
@@ -109,10 +108,10 @@ If a task needs an app permission, external service, or device API that is unava
 `;
 
 function ownModelEndpoint(): string {
-  const configured = (process.env.AI_BASE_URL || '').trim().replace(/\\/+$/, '');
+  const configured = (process.env.AI_BASE_URL || '').trim().replace(/\/+$/, '');
   if (!configured) throw new Error('AI_BASE_URL is not configured. Connect a self-hosted OpenAI-compatible model endpoint.');
-  if (/\\/chat\\/completions$/i.test(configured)) return configured;
-  if (/\\/v1$/i.test(configured)) return configured + '/chat/completions';
+  if (/\/chat\/completions$/i.test(configured)) return configured;
+  if (/\/v1$/i.test(configured)) return configured + '/chat/completions';
   return configured + '/v1/chat/completions';
 }
 
@@ -183,7 +182,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       ? 'Answer in English.'
       : 'Reply in the language used by the user (Hindi, Hinglish, or English).';
   const chatMessages: Array<{ role: string; content: string }> = [
-    { role: 'system', content: JARVIS_SYSTEM_INSTRUCTION + '\\n' + languageHint },
+    { role: 'system', content: JARVIS_SYSTEM_INSTRUCTION + '\n' + languageHint },
   ];
   if (Array.isArray(history)) {
     for (const item of history.slice(-8)) {
@@ -199,7 +198,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     res.json({
       reply: replyText,
       speechText: sanitizeForSpeech(replyText),
-      language: /[\\u0900-\\u097F]/.test(replyText) ? 'hi-IN' : 'en-US',
+      language: /[\u0900-\u097F]/.test(replyText) ? 'hi-IN' : 'en-US',
       timestamp: new Date().toISOString(),
       aiProvider: 'self-hosted-openai-compatible',
       model: process.env.AI_MODEL || 'qwen2.5:3b',
