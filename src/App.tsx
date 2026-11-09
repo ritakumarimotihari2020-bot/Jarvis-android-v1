@@ -52,7 +52,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 
-const API_BASE_URL = (import.meta.env.VITE_JARVIS_API_URL || '').replace(/\\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_JARVIS_API_URL || '').replace(/\/+$/, '');
 const STORAGE_KEY_MESSAGES = 'jarvis_chat_history_v1';
 const STORAGE_KEY_CONFIG = 'jarvis_config_v1';
 
