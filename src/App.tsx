@@ -309,7 +309,7 @@ export default function App() {
         } else if (parsedDevice.action === 'OPEN_WIN_APP' && parsedDevice.targetItem) {
           deviceBridge.executeWindowsCommand('launch_app', parsedDevice.targetItem);
         }
-        setIsDeviceControlOpen(true);
+        if (parsedDevice.action !== 'OPEN_APP') setIsDeviceControlOpen(true);
       } else if (
         lowerInput.includes('security') ||
         lowerInput.includes('authenticate') ||
@@ -401,6 +401,22 @@ export default function App() {
       ) {
         setUpgradeCenterTab('available');
         setIsUpgradeCenterOpen(true);
+      }
+
+      // App launching is handled on-device, so this command works without the cloud server.
+      if (parsedDevice.isDeviceCommand && parsedDevice.action === 'OPEN_APP' && parsedDevice.targetItem) {
+        const launchResult = deviceBridge.launchAndroidApp(parsedDevice.targetItem);
+        const localReply: ChatMessage = {
+          id: 'jarvis-local-' + Date.now(),
+          sender: 'jarvis',
+          text: launchResult.message,
+          speechText: launchResult.message,
+          language: languageMode === 'hi' ? 'hi-IN' : 'en-US',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, localReply]);
+        if (autoSpeak) handleSpeak(localReply.speechText!, localReply.language, localReply.id);
+        return;
       }
 
       setIsThinking(true);
