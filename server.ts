@@ -62,7 +62,8 @@ app.use('/api', (req: Request, res: Response, next) => {
     res.status(204).end();
     return;
   }
-  if (!publicApiRoutes.has(`${req.method} ${req.path}`)) {
+  const routePath = req.originalUrl.split('?')[0];
+  if (!publicApiRoutes.has(`${req.method} ${routePath}`)) {
     res.status(404).json({ error: 'This API route is disabled on the public cloud deployment.' });
     return;
   }
