@@ -144,7 +144,20 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # Capacitor generates the wrapper with a 10-second download timeout.
+          # GitHub runners occasionally need longer to fetch the Gradle distribution.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("gradle/wrapper/gradle-wrapper.properties")
+          s = p.read_text()
+          if "networkTimeout=" in s:
+              import re
+              s = re.sub(r"networkTimeout=\\d+", "networkTimeout=120000", s)
+          else:
+              s += "\\nnetworkTimeout=120000\\n"
+          p.write_text(s)
+          PY
+          ./gradlew --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
