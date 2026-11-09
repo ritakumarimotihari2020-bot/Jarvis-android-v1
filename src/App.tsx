@@ -433,7 +433,17 @@ export default function App() {
           }),
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            responseText.trimStart().startsWith('<')
+              ? 'JARVIS API server is not connected. This APK has no local API endpoint yet.'
+              : 'Server returned an invalid response.'
+          );
+        }
 
         if (!response.ok) {
           throw new Error(data.error || 'Server connection error');
@@ -572,7 +582,18 @@ export default function App() {
           body: JSON.stringify({ protocol }),
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            responseText.trimStart().startsWith('<')
+              ? 'Protocol API server is unavailable in standalone APK mode.'
+              : 'Protocol server returned an invalid response.'
+          );
+        }
+        if (!response.ok) throw new Error(data.error || 'Protocol request failed');
         const jarvisMsgId = 'jarvis-proto-' + Date.now();
 
         const protocolMessage: ChatMessage = {
