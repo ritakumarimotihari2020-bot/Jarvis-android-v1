@@ -155,6 +155,7 @@ jobs:
               s = re.sub(r"networkTimeout=\d+", "networkTimeout=120000", s)
           else:
               s += "\nnetworkTimeout=120000\n"
+          s = re.sub(r"^distributionUrl=.*$", "distributionUrl=https\\://downloads.gradle.org/distributions/gradle-8.11.1-bin.zip", s, flags=re.M)
           p.write_text(s)
           PY
           ./gradlew --no-daemon assembleDebug
