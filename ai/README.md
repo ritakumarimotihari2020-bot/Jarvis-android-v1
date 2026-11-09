@@ -1,26 +1,30 @@
-# JARVIS Own AI (Gemini-free)
+# Run your own JARVIS AI (Gemini-free)
 
-JARVIS now uses an OpenAI-compatible endpoint for its cloud model. The backend does not call Gemini.
+This repository now includes a self-hosted stack: JARVIS API + Ollama + Qwen 2.5 3B. The model weights are downloaded to your server's persistent Docker volume. Requests go to that model; no Gemini API key is used for chat.
 
-## Cloud model server
+## Requirements
 
-Use a machine with enough RAM/VRAM to host an open-weight model. A practical starter model is Qwen 2.5 3B through Ollama. A GPU VM is recommended for responsive answers; the current Render Free web service is only the API gateway and is not suitable for hosting the model itself.
+- A Linux VPS/server you control.
+- Recommended: 8 GB RAM minimum for this small 3B model; 16 GB+ is more comfortable. A supported NVIDIA GPU improves speed but is not mandatory.
+- Docker Engine and Docker Compose plugin.
+- A domain name and HTTPS reverse proxy (Caddy/Nginx/Traefik) before exposing JARVIS to the internet.
 
-1. Provision a separate VM/server with Ollama installed.
-2. Pull a model, for example: `ollama pull qwen2.5:3b`.
-3. Enable Ollama's OpenAI-compatible API and put it behind HTTPS with authentication (reverse proxy/API gateway). Do not expose an unauthenticated Ollama port to the public internet.
-4. In Render → jarvis-mark-vii-api → Environment, set:
-   - `AI_BASE_URL`: HTTPS base URL ending in `/v1` (or the full `/v1/chat/completions` URL)
-   - `AI_MODEL`: exact model name served by that endpoint, e.g. `qwen2.5:3b`
-   - `AI_API_KEY`: the API key configured on your HTTPS gateway, if required
-5. Redeploy Render and check `/api/health`. It should report `modelConfigured: true`.
+## Deploy
 
-The backend expects the OpenAI Chat Completions response format. Compatible servers include Ollama's OpenAI-compatible API, vLLM, and llama.cpp server.
+1. Clone this repository onto your VPS.
+2. In the repository directory run: `docker compose -f docker-compose.own-ai.yml up -d --build`.
+3. First startup downloads Qwen 2.5 3B and may take several minutes; check with `docker compose -f docker-compose.own-ai.yml logs -f model-init`.
+4. Check `http://SERVER-IP:3000/api/health`. It should show `modelConfigured: true` once running.
+5. Put the JARVIS port behind HTTPS and authentication/access controls. Do not expose Ollama's port 11434. Restrict public access to the JARVIS service.
 
-## Hybrid / offline status
+## Android APK
 
-The Android app continues to use the device's speech recognition and speech synthesis when available. A true offline language model is **not yet installed** in the APK; `/api/health` reports this as `offlineModel: "not-installed"`. Adding a phone-side model requires selecting a quantized model that fits the exact device RAM/storage and integrating a supported Android inference runtime. Do not claim offline LLM operation until that model is installed and tested.
+Set the GitHub Actions repository variable/secret used by the Android workflow, `JARVIS_API_BASE_URL`, to the HTTPS URL of your self-hosted JARVIS server, then rebuild the APK. The APK uses that server URL. Never put model secrets in the APK.
 
-## Security
+## Existing Render service
 
-Keep the model server behind HTTPS and authentication. Never put `AI_API_KEY` in the Android app or commit it to GitHub. Only configure secrets in the Render environment.
+The current Render Free service cannot host Ollama/Qwen itself. The `render.yaml` AI_BASE_URL setting is intentionally a required secret placeholder; it must point to a separately hosted, authenticated OpenAI-compatible model server if you keep the API on Render. Easiest fully self-controlled deployment is to run the included Docker Compose stack together on your own VPS and point the APK to it.
+
+## Offline Android model
+
+The APK currently does not contain a local LLM. A true offline model needs a compatible Android inference runtime, a quantized model selected for the phone's RAM/chipset, and a separate tested integration. Do not assume the cloud model works offline.
