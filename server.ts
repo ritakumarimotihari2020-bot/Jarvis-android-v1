@@ -152,7 +152,7 @@ async function generateWithOwnModel(messages: Array<{ role: string; content: str
         // Ollama accepts these runtime options on its OpenAI-compatible endpoint.
         keep_alive: '30m',
         options: {
-          num_ctx: 1024,
+          num_ctx: 512,
           num_predict: 256,
           num_thread: 2,
         },
