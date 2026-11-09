@@ -136,7 +136,7 @@ function ownModelEndpoint(): string {
 async function generateWithOwnModel(messages: Array<{ role: string; content: string }>): Promise<string> {
   const endpoint = ownModelEndpoint();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90000);
+  const timeout = setTimeout(() => controller.abort(), 300000);
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (process.env.AI_API_KEY) headers.Authorization = `Bearer ${process.env.AI_API_KEY}`;
