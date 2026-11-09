@@ -10,6 +10,8 @@
  *   and falls back to Server-Side Gemini TTS (/api/voice/tts) if browser SpeechSynthesis fails.
  */
 
+const API_BASE_URL = (import.meta.env.VITE_JARVIS_API_URL || '').replace(/\/+$/, '');
+
 interface SpeechRecognitionErrorEvent extends Event {
   error: string;
   message?: string;
@@ -302,7 +304,7 @@ export class JarvisSpeechEngine {
               const base64Data = String(reader.result || '').split(',')[1];
               if (!base64Data) return;
               try {
-                const res = await fetch('/api/voice/transcribe', {
+                const res = await fetch(`${API_BASE_URL}/api/voice/transcribe`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -567,7 +569,7 @@ export class JarvisSpeechEngine {
     onError?: (err: any) => void
   ): Promise<boolean> {
     try {
-      const res = await fetch('/api/voice/tts', {
+      const res = await fetch(`${API_BASE_URL}/api/voice/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: text.slice(0, 600) }),
