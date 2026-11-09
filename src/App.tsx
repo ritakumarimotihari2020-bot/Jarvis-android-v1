@@ -22,6 +22,7 @@ import { FileModifierPanel } from './components/FileModifierPanel';
 import { VersionStatusPayload, formatExactSystemTimestamp } from './utils/versionManager';
 import { ownerAuthManager } from './utils/ownerAuth';
 import { deviceBridge } from './utils/deviceBridge';
+import { generateJarvisLocalResponse } from './utils/jarvisHeuristics';
 import { upgradeManager, SystemUpgrade } from './utils/upgradeSystem';
 import { JarvisTheme, themeManager } from './utils/themeSystem';
 import { speechEngine } from './utils/speech';
@@ -455,24 +456,21 @@ export default function App() {
           handleSpeak(data.speechText, data.language, jarvisMsgId);
         }
       } catch (err: any) {
-        console.error('Chat error:', err);
-        playAlert();
-        setErrorMessage(err?.message || 'Neural network latency error');
-
-        const fallbackId = 'jarvis-err-' + Date.now();
+        console.warn('Cloud chat unavailable; using on-device local response:', err);
+        const local = generateJarvisLocalResponse(userInput, languageMode);
+        const fallbackId = 'jarvis-local-' + Date.now();
         const fallbackMessage: ChatMessage = {
           id: fallbackId,
           sender: 'jarvis',
-          text: `My apologies, sir. There was an unexpected disruption in my neural processing link: ${
-            err?.message || 'Connection lost'
-          }. Please check that the server is online.`,
-          speechText: 'My apologies, sir. An error occurred in my neural processing core.',
+          text: local.text + '\n\n(स्थानीय मोड: AI सर्वर उपलब्ध नहीं है। इंटरनेट/API कनेक्शन मिलने पर ही Gemini AI चैट चलेगी।)',
+          speechText: local.speechText,
+          language: local.isHindi ? 'hi-IN' : 'en-US',
           timestamp: new Date().toISOString(),
         };
 
         setMessages((prev) => [...prev, fallbackMessage]);
         if (autoSpeak) {
-          handleSpeak(fallbackMessage.speechText!, 'en-US', fallbackId);
+          handleSpeak(fallbackMessage.speechText!, fallbackMessage.language, fallbackId);
         }
       } finally {
         setIsThinking(false);
