@@ -268,7 +268,7 @@ export default function App() {
     handleSpeak(testText, languageMode === 'hi' ? 'hi-IN' : 'en-US');
   }, [languageMode, handleSpeak]);
 
-  // Send message to Gemini server-side proxy
+  // Send message to JARVIS self-hosted AI server
   const handleSendMessage = useCallback(
     async (userInput: string) => {
       if (!userInput.trim()) return;
@@ -470,11 +470,11 @@ export default function App() {
       } catch (err: any) {
         console.error('JARVIS cloud chat failed:', err);
         const detail = err?.message || 'Network/API connection failed.';
-        setErrorMessage(`Gemini AI उपलब्ध नहीं है: ${detail}`);
+        setErrorMessage(`JARVIS AI उपलब्ध नहीं है: ${detail}`);
         const errorMessage: ChatMessage = {
           id: 'jarvis-error-' + Date.now(),
           sender: 'jarvis',
-          text: `सर, Gemini अनुरोध असफल हुआ: ${detail}`,
+          text: `सर, JARVIS AI अनुरोध असफल हुआ: ${detail}`,
           language: 'hi-IN',
           timestamp: new Date().toISOString(),
         };
