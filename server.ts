@@ -133,6 +133,49 @@ function ownModelEndpoint(): string {
   return configured + '/v1/chat/completions';
 }
 
+async function generateWithClaude(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured on the backend.');
+  const model = (process.env.CLAUDE_MODEL || 'claude-sonnet-4-6').trim();
+  const system = messages.filter((item) => item.role === 'system').map((item) => item.content).join('\n\n');
+  const conversation = messages
+    .filter((item) => item.role === 'user' || item.role === 'assistant')
+    .map((item) => ({ role: item.role, content: item.content }));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        max_tokens: 1200,
+        system,
+        messages: conversation,
+      }),
+    });
+    const raw = await response.text();
+    let payload: any;
+    try { payload = JSON.parse(raw); } catch { throw new Error(`Claude API returned invalid JSON (HTTP ${response.status}).`); }
+    if (!response.ok) {
+      const providerMessage = payload?.error?.message || payload?.message || `HTTP ${response.status}`;
+      throw new Error(String(providerMessage).slice(0, 400));
+    }
+    const text = Array.isArray(payload?.content)
+      ? payload.content.filter((part: any) => part?.type === 'text').map((part: any) => part.text || '').join('\n')
+      : '';
+    if (!text.trim()) throw new Error('Claude returned an empty response.');
+    return text.trim();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function generateWithOwnModel(messages: Array<{ role: string; content: string }>): Promise<string> {
   const endpoint = ownModelEndpoint();
   const controller = new AbortController();
@@ -180,9 +223,13 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'online',
     system: 'J.A.R.V.I.S. Mark VII OS',
-    aiProvider: 'self-hosted-openai-compatible',
-    modelConfigured: Boolean(process.env.AI_BASE_URL),
-    model: process.env.AI_MODEL || 'qwen2.5:3b',
+    aiProvider: (process.env.AI_PROVIDER || 'anthropic').toLowerCase(),
+    modelConfigured: (process.env.AI_PROVIDER || 'anthropic').toLowerCase() === 'anthropic'
+      ? Boolean(process.env.ANTHROPIC_API_KEY)
+      : Boolean(process.env.AI_BASE_URL),
+    model: (process.env.AI_PROVIDER || 'anthropic').toLowerCase() === 'anthropic'
+      ? (process.env.CLAUDE_MODEL || 'claude-sonnet-4-6')
+      : (process.env.AI_MODEL || 'qwen2.5:3b'),
     offlineModel: 'not-installed',
     timestamp: new Date().toISOString(),
   });
@@ -195,7 +242,15 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'Message is required.' });
     return;
   }
-  if (!process.env.AI_BASE_URL) {
+  const aiProvider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
+  if (aiProvider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({
+      error: 'Claude AI अभी कनेक्ट नहीं है। Backend में ANTHROPIC_API_KEY सेट करें।',
+      code: 'CLAUDE_NOT_CONFIGURED',
+    });
+    return;
+  }
+  if (aiProvider !== 'anthropic' && !process.env.AI_BASE_URL) {
     res.status(503).json({
       error: 'JARVIS का अपना AI मॉडल सर्वर अभी कनेक्ट नहीं है। AI_BASE_URL में अपने मॉडल सर्वर का HTTPS endpoint जोड़ें।',
       code: 'OWN_AI_NOT_CONFIGURED',
@@ -220,14 +275,19 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   }
   chatMessages.push({ role: 'user', content: message.trim().slice(0, 800) });
   try {
-    const replyText = await generateWithOwnModel(chatMessages);
+    const replyText = aiProvider === 'anthropic'
+      ? await generateWithClaude(chatMessages)
+      : await generateWithOwnModel(chatMessages);
+    const activeModel = aiProvider === 'anthropic'
+      ? (process.env.CLAUDE_MODEL || 'claude-sonnet-4-6')
+      : (process.env.AI_MODEL || 'qwen2.5:3b');
     res.json({
       reply: replyText,
       speechText: sanitizeForSpeech(replyText),
       language: /[\u0900-\u097F]/.test(replyText) ? 'hi-IN' : 'en-US',
       timestamp: new Date().toISOString(),
-      aiProvider: 'self-hosted-openai-compatible',
-      model: process.env.AI_MODEL || 'qwen2.5:3b',
+      aiProvider,
+      model: activeModel,
     });
   } catch (error: any) {
     const detail = String(error?.message || error || 'Unknown model server error').slice(0, 500);
