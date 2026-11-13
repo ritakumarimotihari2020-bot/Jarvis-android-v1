@@ -278,14 +278,14 @@ jobs:
           ]
           for perm in perms:
             if perm not in s:
-              s=s.replace("<application", f'<uses-permission android:name="{perm}" />\\n    <application', 1)
+              s=s.replace("<application", f'<uses-permission android:name="{perm}" />\n    <application', 1)
           service='''<service android:name="com.jarvis.markvii.JarvisEdgeLightService"
               android:exported="false" android:foregroundServiceType="specialUse">
               <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                   android:value="User-enabled screen edge lighting overlay" />
           </service>'''
           if "JarvisEdgeLightService" not in s:
-            s=s.replace("</application>", service+"\\n    </application>",1)
+            s=s.replace("</application>", service+"\n    </application>",1)
           p.write_text(s)
           # Start service when JARVIS opens/resumes; notification Stop turns it off.
           files=list(Path("android/app/src/main/java").rglob("MainActivity.java"))
@@ -293,7 +293,7 @@ jobs:
           a=files[0]; t=a.read_text()
           if "JarvisEdgeLightService" not in t:
             if "import android.content.Intent;" not in t:
-              t=t.replace("import com.getcapacitor.BridgeActivity;", "import com.getcapacitor.BridgeActivity;\\nimport android.content.Intent;\\nimport android.os.Build;")
+              t=t.replace("import com.getcapacitor.BridgeActivity;", "import com.getcapacitor.BridgeActivity;\nimport android.content.Intent;\nimport android.os.Build;")
             insertion='''
               private void startJarvisEdgeLighting() {
                   Intent i = new Intent(this, com.jarvis.markvii.JarvisEdgeLightService.class);
