@@ -140,6 +140,180 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Add RGB edge lighting foreground service
+        run: |
+          cat > android/app/src/main/java/com/jarvis/markvii/JarvisEdgeLightService.java <<'EOF'
+          package com.jarvis.markvii;
+
+          import android.app.*;
+          import android.content.*;
+          import android.graphics.*;
+          import android.graphics.drawable.*;
+          import android.net.Uri;
+          import android.os.*;
+          import android.provider.Settings;
+          import android.view.*;
+          import android.widget.RemoteViews;
+
+          public class JarvisEdgeLightService extends Service {
+              static final String CHANNEL = "jarvis_edge_lighting";
+              static final int NOTE_ID = 7401;
+              WindowManager wm;
+              View edge;
+              final Handler handler = new Handler(Looper.getMainLooper());
+              final Runnable redraw = new Runnable() {
+                  public void run() {
+                      if (edge != null) edge.invalidate();
+                      handler.postDelayed(this, 45);
+                  }
+              };
+
+              @Override public void onCreate() {
+                  super.onCreate();
+                  createChannel();
+                  startForeground(NOTE_ID, notification());
+                  if (Settings.canDrawOverlays(this)) showEdge();
+              }
+
+              @Override public int onStartCommand(Intent intent, int flags, int id) {
+                  if (intent != null && "STOP".equals(intent.getAction())) {
+                      getSharedPreferences("jarvis_edge", 0).edit().putBoolean("disabled", true).apply();
+                      stopSelf();
+                      return START_NOT_STICKY;
+                  }
+                  if (!Settings.canDrawOverlays(this)) {
+                      Intent settings = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                          Uri.parse("package:" + getPackageName()));
+                      settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      PendingIntent pi = PendingIntent.getActivity(this, 2, settings,
+                          PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                      Notification n = new Notification.Builder(this, CHANNEL)
+                          .setSmallIcon(android.R.drawable.ic_dialog_info)
+                          .setContentTitle("JARVIS RGB Border")
+                          .setContentText("Tap to allow Display over other apps")
+                          .setContentIntent(pi).setOngoing(true).build();
+                      getSystemService(NotificationManager.class).notify(NOTE_ID, n);
+                  } else showEdge();
+                  return START_STICKY;
+              }
+
+              void createChannel() {
+                  if (Build.VERSION.SDK_INT >= 26) {
+                      NotificationChannel c = new NotificationChannel(CHANNEL, "JARVIS Edge Lighting",
+                          NotificationManager.IMPORTANCE_LOW);
+                      getSystemService(NotificationManager.class).createNotificationChannel(c);
+                  }
+              }
+
+              Notification notification() {
+                  Intent stop = new Intent(this, JarvisEdgeLightService.class).setAction("STOP");
+                  PendingIntent action = PendingIntent.getService(this, 1, stop,
+                      PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                  return new Notification.Builder(this, CHANNEL)
+                      .setSmallIcon(android.R.drawable.ic_menu_view)
+                      .setContentTitle("JARVIS RGB Border active")
+                      .setContentText("Rainbow edge lighting is running")
+                      .addAction(android.R.drawable.ic_media_pause, "Stop", action)
+                      .setOngoing(true).build();
+              }
+
+              void showEdge() {
+                  if (edge != null || !Settings.canDrawOverlays(this)) return;
+                  wm = (WindowManager)getSystemService(WINDOW_SERVICE);
+                  edge = new View(this) {
+                      final Paint p = new Paint(3);
+                      final RectF r = new RectF();
+                      final int[] colors = {0xffff1744,0xffff9100,0xffffff00,0xff00e676,
+                          0xff00e5ff,0xff2979ff,0xffd500f9,0xffff1744};
+                      protected void onDraw(Canvas c) {
+                          super.onDraw(c);
+                          float d = getResources().getDisplayMetrics().density;
+                          r.set(3*d, 3*d, getWidth()-3*d, getHeight()-3*d);
+                          p.setStyle(Paint.Style.STROKE);
+                          p.setStrokeWidth(5*d);
+                          p.setShader(new SweepGradient(getWidth()/2f,getHeight()/2f,colors,null));
+                          p.getShader().setLocalMatrix(MatrixFor.rotation((SystemClock.uptimeMillis()/12)%360,
+                              getWidth()/2f,getHeight()/2f));
+                          c.drawRect(r,p);
+                      }
+                  };
+                  int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                      : WindowManager.LayoutParams.TYPE_PHONE;
+                  WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                      WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+                      type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                      WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
+                      WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
+                      WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                      PixelFormat.TRANSLUCENT);
+                  lp.gravity = Gravity.TOP | Gravity.START;
+                  try { wm.addView(edge, lp); handler.post(redraw); } catch (Exception ignored) { edge = null; }
+              }
+
+              static class MatrixFor {
+                  static Matrix rotation(float a,float x,float y) {
+                      Matrix m = new Matrix(); m.setRotate(a,x,y); return m;
+                  }
+              }
+
+              @Override public void onDestroy() {
+                  handler.removeCallbacks(redraw);
+                  if (wm != null && edge != null) try { wm.removeView(edge); } catch (Exception ignored) {}
+                  edge = null;
+                  super.onDestroy();
+              }
+              @Override public IBinder onBind(Intent i) { return null; }
+          }
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path("android/app/src/main/AndroidManifest.xml")
+          s=p.read_text()
+          perms=[
+            "android.permission.SYSTEM_ALERT_WINDOW",
+            "android.permission.FOREGROUND_SERVICE",
+            "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+            "android.permission.POST_NOTIFICATIONS"
+          ]
+          for perm in perms:
+            if perm not in s:
+              s=s.replace("<application", f'<uses-permission android:name="{perm}" />\\n    <application', 1)
+          service='''<service android:name="com.jarvis.markvii.JarvisEdgeLightService"
+              android:exported="false" android:foregroundServiceType="specialUse">
+              <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                  android:value="User-enabled screen edge lighting overlay" />
+          </service>'''
+          if "JarvisEdgeLightService" not in s:
+            s=s.replace("</application>", service+"\\n    </application>",1)
+          p.write_text(s)
+          # Start service when JARVIS opens/resumes; notification Stop turns it off.
+          files=list(Path("android/app/src/main/java").rglob("MainActivity.java"))
+          if not files: raise SystemExit("MainActivity.java not found")
+          a=files[0]; t=a.read_text()
+          if "JarvisEdgeLightService" not in t:
+            if "import android.content.Intent;" not in t:
+              t=t.replace("import com.getcapacitor.BridgeActivity;", "import com.getcapacitor.BridgeActivity;\\nimport android.content.Intent;\\nimport android.os.Build;")
+            insertion='''
+              private void startJarvisEdgeLighting() {
+                  Intent i = new Intent(this, com.jarvis.markvii.JarvisEdgeLightService.class);
+                  if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+              }
+              @Override public void onCreate(android.os.Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getSharedPreferences("jarvis_edge", 0).edit().putBoolean("disabled", false).apply();
+                  startJarvisEdgeLighting();
+              }
+              @Override public void onResume() {
+                  super.onResume();
+                  if (!getSharedPreferences("jarvis_edge", 0).getBoolean("disabled", false))
+                      startJarvisEdgeLighting();
+              }
+            '''
+            t=t.replace("{", "{"+insertion, 1)
+            a.write_text(t)
+          PY
+
       - name: Build debug APK
         working-directory: android
         run: |
